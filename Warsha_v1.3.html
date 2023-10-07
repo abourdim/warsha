@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warsha ورشة v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" onerror="this.disabled=true">
+<script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0a; --bg-light: #0f0f0f; --bg-tab: #111111; --bg-tab-active: #1a1a1a;
+  --border: #1a1a1a; --text: #c8c8c8; --text-dim: #5a5a5a; --text-dark: #333;
+  --accent: #4caf50; --accent-glow: rgba(76,175,80,0.3); --accent-glow-strong: rgba(76,175,80,0.5);
+  --error: #ef5350; --warning: #ff9800;
+  --mono: 'JetBrains Mono','Fira Code','Courier New',monospace; --display: 'El Messiri',serif;
+}
+html,body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:var(--mono); color:var(--text); user-select:none; }
+::-webkit-scrollbar { width:5px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:#2a2a2a; border-radius:3px; }
+
+@keyframes fadeInDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes glowPulse { 0%,100%{text-shadow:0 0 10px var(--accent-glow)} 50%{text-shadow:0 0 20px var(--accent-glow-strong),0 0 30px var(--accent-glow)} }
+@keyframes slideUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes cursorBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes menuAppear { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+@keyframes cardAppear { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(76,175,80,0)} 50%{box-shadow:0 0 6px 2px rgba(76,175,80,0.4)} }
+
+#app { display:flex; flex-direction:column; width:100vw; height:100vh; }
+#fullscreen-btn:hover { color:var(--accent); }
+
+/* Header */
+#header { text-align:center; padding:14px 0 8px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,var(--bg-light),var(--bg)); flex-shrink:0; animation:fadeInDown 1s ease-out; position:relative; }
+#header .bismillah { font-family:'Amiri',serif; font-size:28px; font-weight:700; color:var(--accent); letter-spacing:1px; animation:glowPulse 3s ease-in-out infinite; line-height:1.6; direction:rtl; }
+#header .ornament { font-family:'Amiri',serif; font-size:11px; color:var(--text-dark); margin:2px 0 4px; letter-spacing:8px; opacity:0.5; }
+#header .app-name { font-family:var(--display); font-size:12px; font-weight:500; color:var(--text-dim); letter-spacing:5px; }
+#header .version { font-size:8px; color:var(--text-dark); margin-top:1px; font-family:var(--mono); letter-spacing:2px; }
+
+/* Session Bar (top-level sessions) */
+#session-bar { display:none; align-items:stretch; background:#080808; border-bottom:1px solid #151515; flex-shrink:0; height:26px; overflow-x:auto; }
+#session-bar.show { display:flex; }
+#session-bar::-webkit-scrollbar { height:0; }
+.sess-tab { display:flex; align-items:center; gap:5px; padding:0 12px; font-size:10px; color:var(--text-dark); border-right:1px solid #151515; cursor:pointer; white-space:nowrap; transition:background 0.15s,color 0.15s; position:relative; }
+.sess-tab:hover { background:#121212; color:var(--text-dim); }
+.sess-tab.active { background:#151515; color:var(--accent); }
+.sess-tab .sess-indicator { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.sess-tab .sess-indicator.idle { background:#2a2a2a; }
+.sess-tab .sess-indicator.active-dot { background:var(--accent); animation:pulseGlow 2s infinite; }
+.sess-tab .sess-indicator.activity { background:var(--warning); }
+.sess-tab .sess-close { font-size:11px; color:var(--text-dark); cursor:pointer; margin-left:4px; transition:color 0.15s; }
+.sess-tab .sess-close:hover { color:var(--error); }
+.sess-home { display:flex; align-items:center; padding:0 10px; font-size:12px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; border-right:1px solid #151515; }
+.sess-home:hover { color:var(--accent); }
+
+/* Tab Bar (windows within session) */
+#tab-bar { display:none; align-items:stretch; background:var(--bg-tab); border-bottom:1px solid var(--border); flex-shrink:0; height:28px; overflow-x:auto; }
+#tab-bar.show { display:flex; }
+#tab-bar::-webkit-scrollbar { height:0; }
+.tab { display:flex; align-items:center; gap:6px; padding:0 14px; font-size:11px; font-family:var(--mono); color:var(--text-dim); border-right:1px solid #1a1a1a; cursor:pointer; white-space:nowrap; transition:background 0.15s,color 0.15s; }
+.tab:hover { background:#1a1a1a; color:var(--text); }
+.tab.active { background:var(--bg-tab-active); color:var(--accent); border-bottom:2px solid var(--accent); }
+.tab .tab-index { font-size:9px; color:var(--text-dark); min-width:12px; }
+.tab.active .tab-index { color:var(--accent); opacity:0.6; }
+.tab .tab-name { overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+.tab .tab-close { font-size:13px; color:var(--text-dark); cursor:pointer; line-height:1; padding:0 2px; transition:color 0.15s; }
+.tab .tab-close:hover { color:var(--error); }
+.tab-new { display:flex; align-items:center; justify-content:center; padding:0 12px; font-size:16px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; }
+.tab-new:hover { color:var(--accent); }
+.tab-rename-input { background:var(--bg); border:1px solid var(--accent); color:var(--accent); font-family:var(--mono); font-size:11px; padding:1px 4px; outline:none; width:100px; }
+.tab-save { display:flex; align-items:center; gap:4px; padding:0 12px; font-size:10px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; margin-left:auto; border-left:1px solid #1a1a1a; }
+.tab-save:hover { color:var(--accent); }
+
+/* Welcome Screen */
+#welcome-screen { flex:1; overflow-y:auto; padding:40px 20px; display:flex; flex-direction:column; align-items:center; animation:fadeIn 0.5s ease-out; }
+.welcome-title { font-family:var(--display); font-size:32px; color:var(--accent); margin-bottom:4px; letter-spacing:2px; }
+.welcome-sub { font-size:12px; color:var(--text-dim); margin-bottom:36px; }
+.welcome-section-title { font-size:11px; color:var(--text-dark); text-transform:uppercase; letter-spacing:3px; margin-bottom:16px; }
+.session-cards { display:flex; flex-wrap:wrap; gap:16px; justify-content:center; max-width:900px; width:100%; margin-bottom:30px; }
+.session-card { background:#111; border:1px solid #1e1e1e; width:260px; padding:18px; cursor:pointer; transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s; animation:cardAppear 0.4s ease-out backwards; position:relative; }
+.session-card:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 4px 20px rgba(76,175,80,0.1); }
+.session-card .card-name { font-family:var(--display); font-size:16px; color:var(--text); margin-bottom:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.session-card .card-info { font-size:10px; color:var(--text-dim); line-height:1.6; }
+.session-card .card-colors { display:flex; gap:4px; margin-top:10px; }
+.session-card .card-color-dot { width:10px; height:10px; border-radius:50%; }
+.session-card .card-delete { position:absolute; top:8px; right:10px; font-size:14px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; padding:2px 4px; }
+.session-card .card-delete:hover { color:var(--error); }
+.session-card .card-export { position:absolute; top:8px; right:32px; font-size:11px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; padding:2px 4px; }
+.session-card .card-export:hover { color:var(--accent); }
+.session-card .card-time { font-size:9px; color:#2a2a2a; margin-top:6px; }
+/* Running badge on card */
+.session-card .card-running { position:absolute; top:10px; left:10px; font-size:8px; color:var(--accent); background:rgba(76,175,80,0.1); padding:1px 6px; letter-spacing:1px; }
+
+.new-session-card { background:transparent; border:1px dashed #2a2a2a; width:260px; padding:18px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:120px; transition:border-color 0.2s; color:var(--text-dark); }
+.new-session-card:hover { border-color:var(--accent); color:var(--accent); }
+.new-session-card .plus { font-size:28px; margin-bottom:6px; }
+.new-session-card .label { font-size:11px; }
+
+.import-card { background:transparent; border:1px dashed #2a2a2a; width:260px; padding:18px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:120px; transition:border-color 0.2s; color:var(--text-dark); }
+.import-card:hover { border-color:var(--warning); color:var(--warning); }
+.import-card .icon { font-size:22px; margin-bottom:6px; }
+.import-card .label { font-size:11px; }
+
+.export-all-btn { margin-top:10px; margin-bottom:30px; font-size:10px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; padding:6px 16px; border:1px solid #1e1e1e; }
+.export-all-btn:hover { color:var(--accent); border-color:var(--accent); }
+
+/* Modal */
+#save-modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; }
+#save-modal.show { display:flex; }
+.modal-box { background:#111; border:1px solid #2a2a2a; padding:24px; width:360px; animation:menuAppear 0.2s ease-out; }
+.modal-title { font-family:var(--display); font-size:18px; color:var(--accent); margin-bottom:16px; }
+.modal-label { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.modal-input { width:100%; background:var(--bg); border:1px solid #2a2a2a; color:var(--text); font-family:var(--mono); font-size:13px; padding:8px 12px; outline:none; margin-bottom:16px; transition:border-color 0.2s; }
+.modal-input:focus { border-color:var(--accent); }
+.modal-buttons { display:flex; gap:10px; justify-content:flex-end; }
+.modal-btn { padding:6px 18px; font-family:var(--mono); font-size:11px; cursor:pointer; border:1px solid #2a2a2a; background:transparent; color:var(--text); transition:all 0.15s; }
+.modal-btn:hover { border-color:var(--text-dim); }
+.modal-btn.primary { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.modal-btn.primary:hover { background:#5bc05f; }
+
+/* Pane Container */
+#pane-container { flex:1; overflow:hidden; position:relative; display:none; }
+#pane-container.show { display:block; }
+.overlay-badge { position:absolute; left:50%; transform:translateX(-50%); padding:2px 14px; font-size:10px; font-family:var(--mono); font-weight:500; z-index:100; pointer-events:none; }
+
+/* Terminal */
+.pane-leaf { width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg); border:1px solid var(--border); position:relative; overflow:hidden; transition:border-color 0.2s; }
+.pane-leaf.active { border-color:var(--accent); }
+.pane-id { position:absolute; top:4px; right:6px; font-size:9px; color:#2a2a2a; font-family:var(--mono); z-index:2; transition:color 0.2s; }
+.pane-leaf.active .pane-id { color:var(--accent); }
+.pane-color-dot { position:absolute; top:5px; left:6px; width:6px; height:6px; border-radius:50%; z-index:2; opacity:0.7; }
+.pane-output { flex:1; overflow-y:auto; padding:8px 12px; font-size:12px; line-height:1.6; }
+.pane-output .line { white-space:pre-wrap; word-break:break-word; margin-bottom:1px; animation:slideUp 0.1s ease-out; }
+.line.input { color:var(--accent); } .line.output { color:inherit; } .line.error { color:var(--error); } .line.system { color:var(--text-dim); }
+.pane-input-row { display:flex; align-items:center; margin-top:2px; padding-bottom:4px; }
+.pane-input-row .prompt { color:var(--accent); margin-right:8px; font-weight:500; font-size:12px; white-space:nowrap; flex-shrink:0; max-width:40%; overflow:hidden; text-overflow:ellipsis; direction:rtl; text-align:left; }
+.pane-input-wrap { position:relative; flex:1; display:flex; align-items:center; }
+.pane-input-wrap input { background:transparent; border:none; outline:none; color:inherit; font-family:var(--mono); font-size:12px; width:100%; caret-color:transparent; }
+.pane-cursor { position:absolute; top:50%; transform:translateY(-50%); width:7px; height:14px; background:var(--accent); pointer-events:none; animation:cursorBlink 1.06s step-end infinite; }
+.pane-leaf:not(.active) .pane-cursor { background:transparent; }
+
+/* Light theme pane overrides */
+.pane-leaf.light-pane .pane-id { color:#bbb; }
+.pane-leaf.light-pane.active .pane-id { color:var(--accent); }
+.pane-leaf.light-pane .line.error { color:#c0392b; }
+.pane-leaf.light-pane .line.system { color:#999; }
+.pane-leaf.light-pane ::-webkit-scrollbar-thumb { background:#ccc; }
+
+/* xterm.js inside panes */
+.pane-xterm { flex:1; width:100%; min-height:0; overflow:hidden; }
+.pane-xterm .xterm { height:100% !important; }
+.pane-xterm .xterm-viewport { overflow-y:auto !important; }
+.pane-xterm .xterm-screen { height:100% !important; }
+.pane-xterm .xterm-cursor-layer { z-index:10; }
+
+.divider { background:var(--border); flex-shrink:0; position:relative; z-index:5; transition:background 0.15s; }
+.divider:hover { background:var(--accent); }
+.divider.horizontal { width:100%; height:4px; cursor:row-resize; }
+.divider.vertical { width:4px; height:100%; cursor:col-resize; }
+.split-container { display:flex; width:100%; height:100%; }
+.split-container.horizontal { flex-direction:column; }
+.split-container.vertical { flex-direction:row; }
+.split-child { overflow:hidden; }
+
+/* Context Menu */
+#context-menu { display:none; position:fixed; z-index:1000; background:#151515; border:1px solid #2a2a2a; min-width:200px; padding:4px 0; font-family:var(--mono); font-size:11px; animation:menuAppear 0.12s ease-out; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+.ctx-item { padding:7px 16px; color:var(--text); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.1s; }
+.ctx-item:hover { background:#222; }
+.ctx-item .ctx-shortcut { color:var(--text-dark); font-size:10px; }
+.ctx-sep { height:1px; background:#222; margin:4px 0; }
+.ctx-label { padding:5px 16px; color:var(--text-dark); font-size:10px; text-transform:uppercase; letter-spacing:1px; }
+.ctx-colors { display:flex; gap:6px; padding:6px 16px; flex-wrap:wrap; }
+.ctx-color-swatch { width:20px; height:20px; border-radius:3px; cursor:pointer; border:2px solid transparent; transition:border-color 0.15s,transform 0.1s; }
+.ctx-color-swatch:hover { border-color:#fff; transform:scale(1.15); }
+.ctx-color-swatch.selected { border-color:var(--accent); }
+
+/* Status Bar */
+#status-bar { display:flex; justify-content:space-between; align-items:center; padding:5px 16px; background:#111; border-top:1px solid var(--border); font-size:11px; font-family:var(--mono); color:#444; flex-shrink:0; }
+.sep { color:var(--text-dark); } .hl { color:var(--accent); } .warn { color:var(--warning); font-weight:500; }
+.status-left,.status-right { display:flex; align-items:center; gap:14px; }
+
+/* Hidden file input */
+#import-input { display:none; }
+
+/* Mode toggle in status bar */
+.mode-toggle { cursor:pointer; transition:color 0.15s; padding:0 4px; }
+.mode-toggle:hover { color:var(--accent); }
+
+/* Settings Panel */
+#settings-panel {
+  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:#111; border:1px solid #2a2a2a; padding:28px; width:380px;
+  z-index:2000; animation:menuAppear 0.2s ease-out; box-shadow:0 12px 40px rgba(0,0,0,0.6);
+}
+#settings-panel.show { display:block; }
+#settings-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.6); z-index:1999; }
+#settings-overlay.show { display:block; }
+.settings-title { font-family:var(--display); font-size:18px; color:var(--accent); margin-bottom:20px; }
+.settings-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #1a1a1a; }
+.settings-label { font-size:12px; color:var(--text); }
+.settings-desc { font-size:9px; color:var(--text-dark); margin-top:2px; }
+.settings-switch { width:40px; height:20px; background:#2a2a2a; border-radius:10px; cursor:pointer; position:relative; transition:background 0.2s; }
+.settings-switch.on { background:var(--accent); }
+.settings-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; background:#fff; border-radius:50%; transition:transform 0.2s; }
+.settings-switch.on::after { transform:translateX(20px); }
+.settings-close { position:absolute; top:12px; right:14px; font-size:16px; color:var(--text-dark); cursor:pointer; transition:color 0.15s; }
+.settings-close:hover { color:var(--text); }
+.settings-mode-cards { display:flex; gap:12px; margin-top:16px; }
+.settings-mode-card { flex:1; padding:14px; border:1px solid #2a2a2a; cursor:pointer; transition:border-color 0.2s,background 0.2s; text-align:center; }
+.settings-mode-card:hover { border-color:var(--text-dim); }
+.settings-mode-card.active { border-color:var(--accent); background:rgba(76,175,80,0.05); }
+.settings-mode-card .mode-name { font-family:var(--display); font-size:14px; color:var(--text); margin-bottom:4px; }
+.settings-mode-card .mode-desc { font-size:9px; color:var(--text-dim); line-height:1.4; }
+.settings-mode-card.active .mode-name { color:var(--accent); }
+
+/* Basic mode: simplified context menu, no shortcut labels */
+.basic-mode .ctx-shortcut { display:none; }
+/* Basic mode: hide session bar */
+.basic-mode #session-bar { display:none !important; }
+/* Basic mode: hide save button label details */
+.basic-mode .tab-save .save-label-adv { display:none; }
+
+/* Nudge banner */
+.mode-nudge { font-size:9px; color:var(--text-dark); text-align:center; margin-top:12px; cursor:pointer; transition:color 0.15s; }
+.mode-nudge:hover { color:var(--accent); }
+
+/* ═══ Command Palette ═══ */
+#cmd-palette { display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); width:460px; background:#111; border:1px solid #2a2a2a; z-index:3000; animation:menuAppear 0.15s ease-out; box-shadow:0 12px 50px rgba(0,0,0,0.7); }
+#cmd-palette.show { display:block; }
+#cmd-palette input { width:100%; background:#0e0e0e; border:none; border-bottom:1px solid #2a2a2a; color:var(--text); font-family:var(--mono); font-size:13px; padding:12px 16px; outline:none; }
+#cmd-palette input::placeholder { color:var(--text-dark); }
+.palette-results { max-height:300px; overflow-y:auto; }
+.palette-item { padding:8px 16px; color:var(--text-dim); cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:11px; transition:background 0.1s; }
+.palette-item:hover,.palette-item.selected { background:#1a1a1a; color:var(--text); }
+.palette-item .pal-key { font-size:9px; color:var(--text-dark); background:#1a1a1a; padding:1px 6px; }
+.palette-cat { padding:6px 16px; font-size:9px; color:var(--text-dark); text-transform:uppercase; letter-spacing:1px; border-top:1px solid #1a1a1a; }
+
+/* ═══ Search Bar (per pane) ═══ */
+.pane-search { position:absolute; top:0; right:0; left:0; background:#111; border-bottom:1px solid var(--accent); padding:4px 10px; display:flex; align-items:center; gap:8px; z-index:10; animation:slideUp 0.15s ease-out; }
+.pane-search input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:var(--mono); font-size:11px; }
+.pane-search .search-info { font-size:9px; color:var(--text-dim); white-space:nowrap; }
+.pane-search .search-close { cursor:pointer; color:var(--text-dark); font-size:12px; transition:color 0.15s; }
+.pane-search .search-close:hover { color:var(--text); }
+.line.highlight { background:rgba(76,175,80,0.15); }
+
+/* ═══ Workspace Presets ═══ */
+.preset-cards { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:900px; width:100%; margin-bottom:30px; }
+.preset-card { background:#111; border:1px solid #1e1e1e; width:180px; padding:14px; cursor:pointer; transition:border-color 0.2s,transform 0.15s; text-align:center; }
+.preset-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.preset-card .preset-icon { font-size:24px; margin-bottom:6px; }
+.preset-card .preset-name { font-family:var(--display); font-size:13px; color:var(--text); margin-bottom:4px; }
+.preset-card .preset-desc { font-size:9px; color:var(--text-dim); line-height:1.4; }
+
+/* ═══ Timer/Watch Indicator ═══ */
+.pane-timer { position:absolute; bottom:4px; right:6px; font-size:9px; color:var(--warning); font-family:var(--mono); z-index:2; }
+.pane-watch { position:absolute; bottom:4px; left:6px; font-size:9px; color:var(--accent); font-family:var(--mono); z-index:2; display:flex; align-items:center; gap:3px; }
+.pane-watch::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); animation:pulseGlow 1.5s infinite; }
+
+/* ═══ Broadcast indicator ═══ */
+.pane-broadcast { position:absolute; top:4px; left:20px; font-size:8px; color:var(--warning); font-family:var(--mono); z-index:2; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div class="bismillah">بسم الله الرحمن الرحيم</div>
+    <div class="ornament">✦ ─── ✦ ─── ✦</div>
+    <div class="app-name">W A R S H A  ورشة</div>
+    <div class="version">v1.3 — FULL RELEASE</div>
+  </div>
+  <div id="session-bar"></div>
+  <div id="tab-bar"></div>
+  <div id="welcome-screen"></div>
+  <div id="pane-container"></div>
+  <!-- Fullscreen toggle -->
+  <div id="fullscreen-btn" title="Toggle fullscreen (F11)" style="position:fixed;top:8px;right:10px;z-index:999;cursor:pointer;font-size:14px;color:var(--text-dark);transition:color 0.2s;" onclick="toggleFullscreen()">⛶</div>
+  <div id="status-bar">
+    <div class="status-left">
+      <span class="hl">●</span>
+      <span id="s-session">session: —</span>
+      <span class="sep">│</span>
+      <span id="s-window">window: —</span>
+      <span class="sep">│</span>
+      <span id="s-pane">pane: —</span>
+      <span class="sep">│</span>
+      <span id="s-panes">panes: —</span>
+      <span class="sep">│</span>
+      <span class="mode-toggle" id="s-mode" title="Click to change mode">mode: basic</span>
+      <span id="s-prefix" style="display:none"><span class="sep" style="margin-right:14px">│</span><span class="warn">PREFIX</span></span>
+      <span id="s-zoom" style="display:none"><span class="sep" style="margin-right:14px">│</span><span class="hl">ZOOM</span></span>
+      <span id="s-server" style="display:none"><span class="sep" style="margin-right:14px">│</span><span class="hl" id="s-server-label">LOCAL</span></span>
+    </div>
+    <div class="status-right">
+      <span id="s-uptime">up: 0m 0s</span>
+      <span class="sep">│</span>
+      <span>theme: layl</span>
+      <span class="sep">│</span>
+      <span id="s-clock">00:00:00</span>
+    </div>
+  </div>
+</div>
+<div id="context-menu"></div>
+<div id="save-modal"><div class="modal-box">
+  <div class="modal-title">Save Session</div>
+  <div class="modal-label">Session Name</div>
+  <input id="save-name" class="modal-input" type="text" placeholder="e.g. Dev Environment" />
+  <div class="modal-buttons"><button class="modal-btn" id="save-cancel">Cancel</button><button class="modal-btn primary" id="save-confirm">Save</button></div>
+</div></div>
+<input type="file" id="import-input" accept=".json" />
+<div id="settings-overlay"></div>
+<div id="settings-panel">
+  <div class="settings-close" id="settings-close">×</div>
+  <div class="settings-title">Settings</div>
+  <div class="settings-mode-cards">
+    <div class="settings-mode-card" data-mode="basic">
+      <div class="mode-name">Basic</div>
+      <div class="mode-desc">Clean and simple. Split, run, customize colors. Zero learning curve.</div>
+    </div>
+    <div class="settings-mode-card" data-mode="advanced">
+      <div class="mode-name">Advanced</div>
+      <div class="mode-desc">Full power. Shortcuts, automations, broadcast, search, command palette.</div>
+    </div>
+  </div>
+</div>
+<div id="cmd-palette">
+  <input id="palette-input" type="text" placeholder="Type a command... (Ctrl+K)" />
+  <div class="palette-results" id="palette-results"></div>
+</div>
+
+<script>
+const VERSION="v1.3", VERSION_NAME="FULL RELEASE";
+const WELCOME_LINE=`Warsha ورشة ${VERSION} — ${VERSION_NAME}\nType 'help' for available commands.\n──────────────────────────────────────`;
+const startTime=Date.now(), STORAGE_KEY="warsha-sessions", MODE_KEY="warsha-mode", PRESETS_KEY="warsha-presets", FS_KEY="warsha-fs";
+const WS_URL=(location.protocol==="http:"||location.protocol==="https:")?("ws://"+location.hostname+":"+(parseInt(location.port||8765)+1)):"ws://localhost:8766";
+
+// ═══ Server Connection State ═════════════════════════════════
+let serverMode=false; // true = LIVE (real shell), false = LOCAL (virtual FS)
+const paneWS={}; // paneId -> WebSocket
+
+// ANSI color code → CSS color map
+const ANSI_COLORS={
+  "30":"#1a1a1a","31":"#ef5350","32":"#4caf50","33":"#ff9800","34":"#42a5f5",
+  "35":"#ab47bc","36":"#26c6da","37":"#c8c8c8","39":"inherit",
+  "90":"#666","91":"#ff7070","92":"#66ff66","93":"#ffcc00","94":"#6699ff",
+  "95":"#cc66ff","96":"#66ffff","97":"#ffffff"
+};
+const ANSI_BG={
+  "40":"#1a1a1a","41":"#ef5350","42":"#4caf50","43":"#ff9800","44":"#42a5f5",
+  "45":"#ab47bc","46":"#26c6da","47":"#c8c8c8","49":"transparent",
+  "100":"#666","101":"#ff7070","102":"#66ff66","103":"#ffcc00","104":"#6699ff",
+  "105":"#cc66ff","106":"#66ffff","107":"#ffffff"
+};
+
+function parseANSI(text){
+  // Parse ANSI escape codes into an array of {text, bold, fg, bg} spans
+  const spans=[];
+  let bold=false, fg="inherit", bg="transparent";
+  // Split by ESC[ sequences
+  const parts=text.split(/\x1b\[/);
+  // First part has no escape prefix
+  if(parts[0]) spans.push({text:parts[0],bold,fg,bg});
+  for(let i=1;i<parts.length;i++){
+    const m=parts[i].match(/^([0-9;]*)m(.*)$/s);
+    if(!m){spans.push({text:"\x1b["+parts[i],bold,fg,bg});continue;}
+    const codes=m[1].split(";").filter(Boolean);
+    for(const code of codes){
+      if(code==="0"||code===""){bold=false;fg="inherit";bg="transparent";}
+      else if(code==="1") bold=true;
+      else if(code==="22") bold=false;
+      else if(ANSI_COLORS[code]) fg=ANSI_COLORS[code];
+      else if(ANSI_BG[code]) bg=ANSI_BG[code];
+    }
+    if(m[2]) spans.push({text:m[2],bold,fg,bg});
+  }
+  return spans;
+}
+
+function createANSILine(text){
+  // Create a DOM element with ANSI-colored spans
+  const div=document.createElement("div");
+  div.className="line output";
+  div.style.whiteSpace="pre-wrap";
+  div.style.wordBreak="break-word";
+  const spans=parseANSI(text);
+  for(const s of spans){
+    if(!s.text) continue;
+    const span=document.createElement("span");
+    span.textContent=s.text;
+    if(s.fg!=="inherit") span.style.color=s.fg;
+    if(s.bg!=="transparent") span.style.backgroundColor=s.bg;
+    if(s.bold) span.style.fontWeight="bold";
+    div.appendChild(span);
+  }
+  return div;
+}
+
+// Strip ANSI codes for plain text
+function stripANSI(text){ return text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g,""); }
+
+// Connect a pane to the server
+// xterm.js instances: paneId -> {term, fitAddon, ws}
+const xtermInstances={};
+
+function connectPane(paneId, containerEl){
+  if(xtermInstances[paneId]) return; // already connected
+  if(typeof Terminal==="undefined"){
+    containerEl.innerHTML='<div style="padding:16px;color:#888;font-size:12px;font-family:var(--mono);">⚠ xterm.js not loaded — CDN blocked on file:// protocol.<br><br>Run: <span style="color:#4caf50">python warsha_server.py</span><br>Open: <span style="color:#4caf50">http://localhost:8765</span></div>';
+    serverMode=false; render(); return;
+  }
+  const c=PANE_COLORS[findLeaf(curWin()?.tree,paneId)?.colorIdx||0]||PANE_COLORS[0];
+  const term=new Terminal({
+    fontFamily:"'JetBrains Mono','Fira Code','Courier New',monospace",
+    fontSize:13,
+    lineHeight:1.2,
+    cursorBlink:true,
+    cursorStyle:"block",
+    scrollback:5000,
+    allowProposedApi:true,
+    theme:{
+      background:c.bg,
+      foreground:c.text,
+      cursor:c.accent,
+      cursorAccent:c.bg,
+      selectionBackground:c.accent+"40",
+    },
+  });
+  const fitAddon=new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(containerEl);
+  fitAddon.fit();
+
+  try{
+    const ws=new WebSocket(WS_URL);
+    paneWS[paneId]=ws;
+
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({type:"spawn",cols:term.cols,rows:term.rows}));
+    };
+    ws.onmessage=(ev)=>{
+      try{
+        const msg=JSON.parse(ev.data);
+        if(msg.type==="output"){
+          term.write(msg.data);
+        } else if(msg.type==="exit"){
+          term.write("\r\n\x1b[2m[Process exited]\x1b[0m\r\n");
+          delete paneWS[paneId];
+        }
+      }catch(e){}
+    };
+    ws.onerror=()=>{};
+    ws.onclose=()=>{ delete paneWS[paneId]; };
+
+    // Send keystrokes from xterm to server
+    term.onData((data)=>{
+      if(ws.readyState===WebSocket.OPEN){
+        ws.send(JSON.stringify({type:"input",data}));
+      }
+    });
+
+    // Handle resize
+    term.onResize(({cols,rows})=>{
+      if(ws.readyState===WebSocket.OPEN){
+        ws.send(JSON.stringify({type:"resize",cols,rows}));
+      }
+    });
+
+    xtermInstances[paneId]={term,fitAddon,ws,container:containerEl};
+  }catch(e){
+    delete paneWS[paneId];
+  }
+}
+
+function disconnectPane(paneId){
+  const inst=xtermInstances[paneId];
+  if(inst){
+    try{inst.ws?.close();}catch(e){}
+    try{inst.term?.dispose();}catch(e){}
+    delete xtermInstances[paneId];
+  }
+  delete paneWS[paneId];
+}
+
+// Refit all visible xterm instances (on split resize, window resize)
+function refitXterms(){
+  for(const pid in xtermInstances){
+    try{xtermInstances[pid].fitAddon.fit();}catch(e){}
+  }
+}
+window.addEventListener("resize",()=>setTimeout(refitXterms,100));
+
+function sendToPane(paneId, data){
+  const ws=paneWS[paneId];
+  if(ws&&ws.readyState===WebSocket.OPEN){
+    ws.send(JSON.stringify({type:"input",data}));
+  }
+}
+
+function resizePane(paneId, cols, rows){
+  const ws=paneWS[paneId];
+  if(ws&&ws.readyState===WebSocket.OPEN){
+    ws.send(JSON.stringify({type:"resize",cols,rows}));
+  }
+}
+
+// Auto-detect server on startup
+async function detectServer(){
+  return new Promise((resolve)=>{
+    try{
+      const ws=new WebSocket(WS_URL);
+      const timeout=setTimeout(()=>{try{ws.close();}catch(e){}resolve(false);},1500);
+      ws.onopen=()=>{
+        clearTimeout(timeout);
+        ws.send(JSON.stringify({type:"ping"}));
+      };
+      ws.onmessage=(ev)=>{
+        try{
+          const msg=JSON.parse(ev.data);
+          if(msg.type==="pong"){ws.close();resolve(true);}
+          else{ws.close();resolve(false);}
+        }catch(e){ws.close();resolve(false);}
+      };
+      ws.onerror=()=>{clearTimeout(timeout);resolve(false);};
+    }catch(e){resolve(false);}
+  });
+}
+
+const PANE_COLORS=[
+  // ── Dark Themes ────────────────────────────────
+  {name:"Default",bg:"#0a0a0a",text:"#c8c8c8",accent:"#4caf50"},
+  {name:"Layl ليل",bg:"#060a06",text:"#7dba7d",accent:"#3ea63e"},
+  {name:"Oud عود",bg:"#110d06",text:"#d4aa6a",accent:"#c0892e"},
+  {name:"Fajr فجر",bg:"#18101a",text:"#e8bfcf",accent:"#d4707a"},
+  {name:"Rawda روضة",bg:"#081008",text:"#a0c898",accent:"#5a9450"},
+  {name:"Salam سلام",bg:"#080c16",text:"#a8c0dc",accent:"#4a88c0"},
+  {name:"Filastin فلسطين",bg:"#0c0e0a",text:"#d8d8d4",accent:"#d43030"},
+  {name:"Al Madina المدينة",bg:"#16120a",text:"#dcc898",accent:"#c8a030",
+    border:"#2a2210"},
+  {name:"Al Hamra الحمراء",bg:"#180c08",text:"#dca080",accent:"#c44a24",
+    border:"#2c1a12"},
+  {name:"Al Quds القدس",bg:"#10101a",text:"#d0c898",accent:"#d4a020",
+    border:"#22201a"},
+  {name:"Dhahab ذهب",bg:"#0a0a16",text:"#c8c070",accent:"#daa820"},
+  {name:"Turathi تراثي",bg:"#081210",text:"#80b8a8",accent:"#2c8870"},
+  // ── Light Themes ───────────────────────────────
+  {name:"Noor نور",bg:"#f5f0e8",text:"#3a3530",accent:"#1a7a42",
+    border:"#ddd4c4",light:true},
+  {name:"Yasmin ياسمين",bg:"#faf8f4",text:"#40383a",accent:"#8a4a70",
+    border:"#e8e0d8",light:true},
+];
+
+// ═══ Virtual Filesystem ══════════════════════════════════════
+const FS_DEFAULT = {
+  type:"dir", name:"/", children:{
+    "home":{type:"dir",name:"home",children:{
+      "user":{type:"dir",name:"user",children:{
+        ".bashrc":{type:"file",name:".bashrc",content:"# Warsha shell config\nexport PS1='❯ '\nalias ll='ls -la'"},
+        "notes.md":{type:"file",name:"notes.md",content:"# Notes\n\nبسم الله الرحمن الرحيم\n\nWelcome to Warsha ورشة — your digital workshop."},
+      }},
+    }},
+    "sessions":{type:"dir",name:"sessions",children:{}},
+    "scripts":{type:"dir",name:"scripts",children:{
+      "hello.sh":{type:"file",name:"hello.sh",content:"#!/bin/warsha\necho بسم الله الرحمن الرحيم\necho Hello from Warsha!"},
+      "colors.sh":{type:"file",name:"colors.sh",content:"#!/bin/warsha\ncolors"},
+    }},
+    "exports":{type:"dir",name:"exports",children:{}},
+    "tmp":{type:"dir",name:"tmp",children:{}},
+    "README.md":{type:"file",name:"README.md",content:`# Warsha ورشة ${VERSION}\n\nA web-based terminal multiplexer.\nType 'help' for commands.\n\nFiles are stored in a virtual filesystem.\nUse ls, cd, cat, mkdir, touch, rm, mv, cp, tree, pwd.`},
+    "config.json":{type:"file",name:"config.json",content:'{\n  "name": "Warsha",\n  "version": "1.0",\n  "theme": "layl",\n  "mode": "basic"\n}'},
+  }
+};
+
+function cloneFS(node){
+  if(!node)return null;
+  if(node.type==="file") return {type:"file",name:node.name,content:node.content};
+  const c={};
+  for(const k in node.children) c[k]=cloneFS(node.children[k]);
+  return {type:"dir",name:node.name,children:c};
+}
+
+let vfs = cloneFS(FS_DEFAULT);
+
+function resolvePath(cwd, pathStr){
+  if(!pathStr || pathStr==="~") return ["home","user"];
+  if(pathStr.startsWith("~/")) pathStr = "/home/user/" + pathStr.slice(2);
+  const parts = pathStr.startsWith("/") ? pathStr.split("/") : [...cwd, ...pathStr.split("/")];
+  const resolved=[];
+  for(const p of parts){
+    if(!p || p===".") continue;
+    if(p===".."){resolved.pop(); continue;}
+    resolved.push(p);
+  }
+  return resolved;
+}
+
+function fsGet(pathArr){
+  let node=vfs;
+  for(const p of pathArr){
+    if(!node||node.type!=="dir"||!node.children[p]) return null;
+    node=node.children[p];
+  }
+  return node;
+}
+
+function fsParent(pathArr){
+  if(pathArr.length===0) return {parent:null,name:""};
+  const parentPath=pathArr.slice(0,-1);
+  const name=pathArr[pathArr.length-1];
+  const parent=parentPath.length===0?vfs:fsGet(parentPath);
+  return {parent,name};
+}
+
+function pathStr(pathArr){ return "/"+pathArr.join("/"); }
+
+function fsLs(cwd, args){
+  const showAll = args.includes("-a") || args.includes("-la") || args.includes("-al");
+  const showLong = args.includes("-l") || args.includes("-la") || args.includes("-al");
+  const pathArg = args.split(/\s+/).filter(a=>!a.startsWith("-")).join(" ").trim();
+  const target = pathArg ? resolvePath(cwd, pathArg) : cwd;
+  const node = target.length===0 ? vfs : fsGet(target);
+  if(!node) return {err:`ls: cannot access '${pathArg}': No such file or directory`};
+  if(node.type==="file"){
+    if(showLong) return {out:`-rw-r--r--  ${node.content.length.toString().padStart(6)}  ${node.name}`};
+    return {out:node.name};
+  }
+  const keys=Object.keys(node.children).sort();
+  const entries = showAll ? [".","..",...keys] : keys.filter(k=>!k.startsWith("."));
+  if(entries.length===0) return {out:""};
+  if(showLong){
+    const lines=[];
+    if(showAll){lines.push("drwxr-xr-x       0  ."); lines.push("drwxr-xr-x       0  ..");}
+    keys.filter(k=>showAll||!k.startsWith(".")).forEach(k=>{
+      const c=node.children[k];
+      if(c.type==="dir") lines.push(`drwxr-xr-x       0  ${c.name}/`);
+      else lines.push(`-rw-r--r--  ${c.content.length.toString().padStart(6)}  ${c.name}`);
+    });
+    return {out:lines.join("\n")};
+  }
+  return {out:entries.map(e=>{
+    if(e==="."||e==="..") return e;
+    const c=node.children[e]; return c.type==="dir"?c.name+"/":c.name;
+  }).join("  ")};
+}
+
+function fsCd(cwd, args){
+  if(!args || args==="~") return {cwd:["home","user"]};
+  if(args==="/") return {cwd:[]};
+  const target=resolvePath(cwd,args);
+  const node=target.length===0?vfs:fsGet(target);
+  if(!node) return {err:`cd: no such file or directory: ${args}`};
+  if(node.type!=="dir") return {err:`cd: not a directory: ${args}`};
+  return {cwd:target};
+}
+
+function fsCat(cwd, args){
+  if(!args) return {err:"cat: missing operand"};
+  const target=resolvePath(cwd,args);
+  const node=fsGet(target);
+  if(!node) return {err:`cat: ${args}: No such file or directory`};
+  if(node.type==="dir") return {err:`cat: ${args}: Is a directory`};
+  return {out:node.content};
+}
+
+function fsMkdir(cwd, args){
+  if(!args) return {err:"mkdir: missing operand"};
+  const pFlag = args.startsWith("-p ");
+  const pathArg = pFlag ? args.slice(3).trim() : args.trim();
+  if(pFlag){
+    const parts = resolvePath(cwd, pathArg);
+    let cur = vfs;
+    for(const p of parts){
+      if(!cur.children[p]) cur.children[p]={type:"dir",name:p,children:{}};
+      else if(cur.children[p].type!=="dir") return {err:`mkdir: '${p}': Not a directory`};
+      cur=cur.children[p];
+    }
+    return {out:""};
+  }
+  const target=resolvePath(cwd,pathArg);
+  const {parent,name}=fsParent(target);
+  if(!parent||parent.type!=="dir") return {err:`mkdir: cannot create directory '${pathArg}': No such file or directory`};
+  if(parent.children[name]) return {err:`mkdir: cannot create directory '${pathArg}': File exists`};
+  parent.children[name]={type:"dir",name:name,children:{}};
+  return {out:""};
+}
+
+function fsTouch(cwd, args){
+  if(!args) return {err:"touch: missing operand"};
+  const target=resolvePath(cwd,args);
+  const node=fsGet(target);
+  if(node) return {out:""};
+  const {parent,name}=fsParent(target);
+  if(!parent||parent.type!=="dir") return {err:`touch: cannot touch '${args}': No such file or directory`};
+  parent.children[name]={type:"file",name:name,content:""};
+  return {out:""};
+}
+
+function fsRm(cwd, args){
+  if(!args) return {err:"rm: missing operand"};
+  const recursive = /^-[rf]+\s/.test(args);
+  const pathArg = args.replace(/^-[rf]+\s+/,"").trim();
+  const target=resolvePath(cwd,pathArg);
+  if(target.length===0) return {err:"rm: cannot remove '/': Permission denied"};
+  const node=fsGet(target);
+  if(!node) return {err:`rm: cannot remove '${pathArg}': No such file or directory`};
+  if(node.type==="dir" && !recursive) return {err:`rm: cannot remove '${pathArg}': Is a directory (use -r)`};
+  const {parent,name}=fsParent(target);
+  if(parent&&parent.children) delete parent.children[name];
+  return {out:""};
+}
+
+function fsMv(cwd, args){
+  const parts=args.match(/(?:[^\s"]+|"[^"]*")+/g);
+  if(!parts||parts.length<2) return {err:"mv: missing operand"};
+  const srcPath=resolvePath(cwd,parts[0]), srcNode=fsGet(srcPath);
+  if(!srcNode) return {err:`mv: cannot stat '${parts[0]}': No such file or directory`};
+  const dstPath=resolvePath(cwd,parts[1]);
+  const dstNode=dstPath.length===0?vfs:fsGet(dstPath);
+  const {parent:srcParent,name:srcName}=fsParent(srcPath);
+  if(dstNode&&dstNode.type==="dir"){
+    dstNode.children[srcNode.name]=srcNode;
+    delete srcParent.children[srcName];
+  } else {
+    const {parent:dstParent,name:dstName}=fsParent(dstPath);
+    if(!dstParent||dstParent.type!=="dir") return {err:`mv: cannot move to '${parts[1]}': No such file or directory`};
+    srcNode.name=dstName;
+    dstParent.children[dstName]=srcNode;
+    delete srcParent.children[srcName];
+  }
+  return {out:""};
+}
+
+function fsCp(cwd, args){
+  const recursive = args.startsWith("-r ");
+  const cleanArgs = recursive ? args.slice(3).trim() : args.trim();
+  const parts=cleanArgs.match(/(?:[^\s"]+|"[^"]*")+/g);
+  if(!parts||parts.length<2) return {err:"cp: missing operand"};
+  const srcPath=resolvePath(cwd,parts[0]);
+  const srcNode=fsGet(srcPath);
+  if(!srcNode) return {err:`cp: cannot stat '${parts[0]}': No such file or directory`};
+  if(srcNode.type==="dir"&&!recursive) return {err:`cp: -r not specified; omitting directory '${parts[0]}'`};
+  const dstPath=resolvePath(cwd,parts[1]);
+  const dstNode=dstPath.length===0?vfs:fsGet(dstPath);
+  const copy=cloneFS(srcNode);
+  if(dstNode&&dstNode.type==="dir"){
+    dstNode.children[copy.name]=copy;
+  } else {
+    const {parent,name}=fsParent(dstPath);
+    if(!parent||parent.type!=="dir") return {err:`cp: cannot create '${parts[1]}': No such file or directory`};
+    copy.name=name;
+    parent.children[name]=copy;
+  }
+  return {out:""};
+}
+
+function fsTree(cwd, args){
+  const target = args ? resolvePath(cwd,args) : cwd;
+  const node = target.length===0 ? vfs : fsGet(target);
+  if(!node) return {err:`tree: '${args}': No such file or directory`};
+  if(node.type==="file") return {out:node.name};
+  let dirs=0, files=0;
+  function walk(n, prefix){
+    const keys=Object.keys(n.children).sort();
+    let out="";
+    keys.forEach((k,i)=>{
+      const child=n.children[k];
+      const last=i===keys.length-1;
+      const connector=last?"└── ":"├── ";
+      const display=child.type==="dir"?child.name+"/":child.name;
+      out+=prefix+connector+display+"\n";
+      if(child.type==="dir"){dirs++;out+=walk(child,prefix+(last?"    ":"│   "));}
+      else files++;
+    });
+    return out;
+  }
+  const name=target.length===0?"/":target[target.length-1]+"/";
+  const body=walk(node,"");
+  return {out:name+"\n"+body+`\n${dirs} director${dirs!==1?"ies":"y"}, ${files} file${files!==1?"s":""}`};
+}
+
+function fsWrite(cwd, input){
+  const appendMatch=input.match(/^echo\s+(.*?)\s*>>\s*(.+)$/);
+  const writeMatch=input.match(/^echo\s+(.*?)\s*>\s*(.+)$/);
+  if(appendMatch){
+    const content=appendMatch[1], filePath=appendMatch[2].trim();
+    const target=resolvePath(cwd,filePath);
+    const node=fsGet(target);
+    if(node&&node.type==="file"){node.content+="\n"+content; return {out:""};}
+    if(node&&node.type==="dir") return {err:`bash: ${filePath}: Is a directory`};
+    const {parent,name}=fsParent(target);
+    if(!parent||parent.type!=="dir") return {err:`bash: ${filePath}: No such file or directory`};
+    parent.children[name]={type:"file",name:name,content:content};
+    return {out:""};
+  }
+  if(writeMatch){
+    const content=writeMatch[1], filePath=writeMatch[2].trim();
+    const target=resolvePath(cwd,filePath);
+    const node=fsGet(target);
+    if(node&&node.type==="dir") return {err:`bash: ${filePath}: Is a directory`};
+    const {parent,name}=fsParent(target);
+    if(!parent||parent.type!=="dir") return {err:`bash: ${filePath}: No such file or directory`};
+    parent.children[name]={type:"file",name:name,content:content};
+    return {out:""};
+  }
+  return null;
+}
+
+function serializeFS(){ return JSON.parse(JSON.stringify(vfs)); }
+function loadFS(data){ if(data) vfs=data; else vfs=cloneFS(FS_DEFAULT); }
+
+const COMMANDS={
+  help:()=>{
+    let txt=`Available commands:
+  help          — show this message
+  clear         — clear terminal output
+  echo [text]   — print text
+  echo t > f    — write text to file
+  echo t >> f   — append text to file
+  date          — current date and time
+  whoami        — who are you?
+
+  Filesystem:
+  pwd           — print working directory
+  ls [-la]      — list files and directories
+  cd [path]     — change directory
+  cat [file]    — read file contents
+  mkdir [-p] d  — create directory
+  touch [file]  — create empty file
+  rm [-rf] path — remove file or directory
+  mv src dst    — move / rename
+  cp [-r] s d   — copy file or directory
+  tree [path]   — show directory tree
+  head [file]   — first 10 lines
+  wc [file]     — count lines/words/chars
+
+  Terminal:
+  neofetch      — system info
+  version       — Warsha version
+  bismillah     — ﷽
+  split / hsplit / vsplit — split pane
+  close / exit  — close pane
+  zoom          — zoom pane toggle
+  fullscreen    — toggle fullscreen (F11)
+  panes         — pane info
+  new-tab       — new tab
+  rename [name] — rename tab
+  colors        — color presets
+  color [name]  — set pane color
+  save          — save session
+  home          — welcome screen
+  mode          — toggle basic/advanced
+  settings      — open settings`;
+    if(isAdvanced()) txt+=`
+  sessions      — list sessions
+  switch [name] — switch to session
+  export        — export session JSON
+  import        — import session JSON
+  layout [NxN]  — quick layout (2x2, 1+2, 3x1)
+  watch [regex] [cmd] — watch output, run cmd on match
+  unwatch       — remove watchers on this pane
+  timer [sec] [cmd] — repeat cmd every N seconds
+  untimer       — stop timer on this pane
+  broadcast     — toggle broadcast on this pane
+  search [text] — search pane output
+  palette       — open command palette
+  server        — server status / connect / disconnect
+
+Shortcuts (tmux-compatible):
+  Ctrl+B "         — split horizontal
+  Ctrl+B %         — split vertical
+  Ctrl+B x         — close pane
+  Ctrl+B ↑↓←→      — navigate panes
+  Ctrl+B o         — next pane
+  Ctrl+B z         — zoom pane
+  Ctrl+B c         — new window
+  Ctrl+B n / p     — next/prev window
+  Ctrl+B 0-9       — select window by number
+  Ctrl+B l         — last window
+  Ctrl+B ,         — rename window
+  Ctrl+B &         — close window
+  Ctrl+B s         — session list
+  Ctrl+B S         — save session
+  Ctrl+B d         — detach (home)
+  Ctrl+B w         — window list
+  Ctrl+B [         — search in pane
+  Ctrl+B f         — find in pane
+  Ctrl+B q         — show pane numbers
+  Ctrl+B t         — show time
+  Ctrl+B ( / )     — prev/next session
+  Ctrl+K           — command palette
+  Ctrl+L           — clear`;
+    else txt+=`
+
+Tip: Switch to Advanced mode for keyboard
+shortcuts, session switching, and more.
+Type 'mode' or click mode in the status bar.`;
+    txt+=`\n  Right-click      — context menu`;
+    return txt;
+  },
+  date:()=>new Date().toLocaleString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"}),
+  whoami:()=>"مستخدم ورشة — Warsha User",
+  version:()=>`Warsha ورشة ${VERSION} — ${VERSION_NAME}`,
+  colors:()=>PANE_COLORS.map(c=>`  ${c.name.padEnd(14)} █ bg:${c.bg} text:${c.text}`).join("\n"),
+  neofetch:()=>`  ╭──────────────────────────╮\n  │  ورشة  Warsha ${VERSION}       │\n  ╰──────────────────────────╯\n  OS      : Warsha Terminal\n  Shell   : warsha-sh\n  Theme   : Layl (ليل)\n  Mode    : ${appMode}\n  ﷽`,
+  bismillah:()=>`\n  ﷽\n  بسم الله الرحمن الرحيم\n`,
+};
+
+// ═══ State ═══════════════════════════════════════════════════
+let paneIdCounter=0, splitIdCounter=0, tabIdCounter=0;
+
+// Open sessions: array of { id, name, windows, activeWindowIdx, savedId }
+// Each is a fully live session
+let openSessions=[];
+let activeSessionIdx=-1;
+let zoomedId=null, prefixMode=false, prefixTimeout=null, renamingTabId=null;
+let screenMode="welcome";
+let savedSessions=[];
+let appMode="basic"; // "basic" or "advanced"
+
+// ═══ Automation State ════════════════════════════════════════
+let watchers=[];   // {id, paneId, pattern, action, targetPaneId}
+let timers=[];     // {id, paneId, command, intervalMs, handle}
+let broadcastGroup=new Set(); // pane ids in broadcast mode
+let searchState={}; // paneId -> {query, matches, currentIdx}
+let paletteOpen=false;
+let paletteSelected=0;
+
+// ═══ Workspace Presets ═══════════════════════════════════════
+const WORKSPACE_PRESETS=[
+  {name:"Dev Environment",icon:"💻",desc:"Server, tests, logs",layout:[
+    {dir:"vertical",ratio:0.5,first:{cmd:"echo Starting server..."},second:{dir:"horizontal",ratio:0.5,first:{cmd:"echo Running tests..."},second:{cmd:"echo Watching logs..."}}}
+  ]},
+  {name:"Monitoring",icon:"📊",desc:"4-pane system monitor",layout:[
+    {dir:"vertical",ratio:0.5,first:{dir:"horizontal",ratio:0.5,first:{cmd:"echo CPU: ████░░ 68%",color:5},second:{cmd:"echo MEM: ███░░░ 52%",color:5}},second:{dir:"horizontal",ratio:0.5,first:{cmd:"echo NET: ↑2.4MB ↓8.1MB",color:11},second:{cmd:"echo DISK: 234GB/500GB",color:11}}}
+  ]},
+  {name:"Writing",icon:"✍️",desc:"Notes + reference",layout:[
+    {dir:"vertical",ratio:0.65,first:{cmd:"echo Ready to write..."},second:{cmd:"echo Reference pane"}}
+  ]},
+  {name:"Git Workflow",icon:"🔀",desc:"Status, diff, log",layout:[
+    {dir:"vertical",ratio:0.33,first:{cmd:"echo git status",color:1},second:{dir:"horizontal",ratio:0.5,first:{cmd:"echo git diff",color:1},second:{cmd:"echo git log --oneline",color:1}}}
+  ]},
+  {name:"Filastin",icon:"🇵🇸",desc:"Palestine themed workspace",layout:[
+    {dir:"vertical",ratio:0.5,first:{dir:"horizontal",ratio:0.5,first:{cmd:"bismillah",color:6},second:{cmd:"echo الحرية Freedom",color:6}},second:{dir:"horizontal",ratio:0.5,first:{cmd:"date",color:6},second:{cmd:"neofetch",color:6}}}
+  ]},
+];
+
+function curSess(){ return openSessions[activeSessionIdx]; }
+function curWin(){ const s=curSess(); return s? s.windows[s.activeWindowIdx]:null; }
+
+// ═══ Persistence ═════════════════════════════════════════════
+async function loadSavedSessions(){
+  try{ if(window.storage){ const r=await window.storage.get(STORAGE_KEY); if(r&&r.value) savedSessions=JSON.parse(r.value); } }catch(e){ console.log("Load:",e); }
+  try{ if(window.storage){ const r=await window.storage.get(MODE_KEY); if(r&&r.value) appMode=r.value; } }catch(e){}
+  try{ if(window.storage){ const r=await window.storage.get(FS_KEY); if(r&&r.value) loadFS(JSON.parse(r.value)); } }catch(e){ console.log("FS Load:",e); }
+}
+async function persistSessions(){
+  try{ if(window.storage) await window.storage.set(STORAGE_KEY,JSON.stringify(savedSessions)); }catch(e){ console.log("Save:",e); }
+  try{ if(window.storage) await window.storage.set(FS_KEY,JSON.stringify(serializeFS())); }catch(e){ console.log("FS Save:",e); }
+}
+async function persistMode(){
+  try{ if(window.storage) await window.storage.set(MODE_KEY,appMode); }catch(e){}
+}
+function setMode(mode){ appMode=mode; persistMode(); document.body.className=mode==="basic"?"basic-mode":""; render(); }
+function toggleMode(){ setMode(appMode==="basic"?"advanced":"basic"); }
+function isAdvanced(){ return appMode==="advanced"; }
+
+// ═══ Tree Utils ══════════════════════════════════════════════
+function createLeaf(){ return {type:"leaf",id:++paneIdCounter,lines:[{text:WELCOME_LINE,cls:"system"}],history:[],historyIndex:-1,input:"",colorIdx:0,cwd:["home","user"]}; }
+function getAllLeafIds(n){ if(!n)return[]; if(n.type==="leaf")return[n.id]; return[...getAllLeafIds(n.first),...getAllLeafIds(n.second)]; }
+function findLeaf(n,id){ if(!n)return null; if(n.type==="leaf")return n.id===id?n:null; return findLeaf(n.first,id)||findLeaf(n.second,id); }
+function splitPaneInTree(n,tid,dir){ if(n.type==="leaf"){ if(n.id===tid)return{type:"split",direction:dir,ratio:0.5,_splitId:`s${++splitIdCounter}`,first:{...n},second:createLeaf()}; return n; } return{...n,first:splitPaneInTree(n.first,tid,dir),second:splitPaneInTree(n.second,tid,dir)}; }
+function removePaneFromTree(n,tid){ if(!n)return null; if(n.type==="leaf")return n.id===tid?null:n; const f=removePaneFromTree(n.first,tid),s=removePaneFromTree(n.second,tid); if(!f&&!s)return null; if(!f)return s; if(!s)return f; return{...n,first:f,second:s}; }
+function getNeighborId(dir){ const w=curWin(); if(!w)return null; const ids=getAllLeafIds(w.tree),idx=ids.indexOf(w.activeId); if(idx===-1)return w.activeId; return dir==="next"?ids[(idx+1)%ids.length]:ids[(idx-1+ids.length)%ids.length]; }
+function findSplitBounds(n,sid,b){ if(!n||n.type==="leaf")return null; if(n._splitId===sid)return b; const isH=n.direction==="horizontal"; const fb=isH?{...b,h:b.h*n.ratio}:{...b,w:b.w*n.ratio}; const sb=isH?{t:b.t+b.h*n.ratio,l:b.l,w:b.w,h:b.h*(1-n.ratio)}:{t:b.t,l:b.l+b.w*n.ratio,w:b.w*(1-n.ratio),h:b.h}; return findSplitBounds(n.first,sid,fb)||findSplitBounds(n.second,sid,sb); }
+function updateRatio(n,sid,r){ if(!n||n.type==="leaf")return n; if(n._splitId===sid)return{...n,ratio:Math.max(0.12,Math.min(0.88,r))}; return{...n,first:updateRatio(n.first,sid,r),second:updateRatio(n.second,sid,r)}; }
+
+// ═══ Serialization ═══════════════════════════════════════════
+function serializeTree(n){ if(!n)return null; if(n.type==="leaf"){ const lc=[...n.history].pop()||""; return{type:"leaf",colorIdx:n.colorIdx,startupCmd:lc,cwd:n.cwd||["home","user"]}; } return{type:"split",direction:n.direction,ratio:n.ratio,first:serializeTree(n.first),second:serializeTree(n.second)}; }
+function serializeOpenSession(s){ return{ windows:s.windows.map(w=>({name:w.name,tree:serializeTree(w.tree),paneCount:getAllLeafIds(w.tree).length})), activeWindowIdx:s.activeWindowIdx, fs:serializeFS() }; }
+function deserializeTree(s){ if(!s)return createLeaf(); if(s.type==="leaf"){ const l=createLeaf(); l.colorIdx=s.colorIdx||0; l.cwd=s.cwd||["home","user"]; if(s.startupCmd){ l.lines.push({text:`❯ ${s.startupCmd}`,cls:"input"}); execStartup(l,s.startupCmd); } return l; } return{type:"split",direction:s.direction,ratio:s.ratio,_splitId:`s${++splitIdCounter}`,first:deserializeTree(s.first),second:deserializeTree(s.second)}; }
+function execStartup(leaf,cmd){ const p=cmd.trim().split(" "),c=p[0].toLowerCase(),a=p.slice(1).join(" "); if(c==="echo")leaf.lines.push({text:a||"",cls:"output"}); else if(c==="ls"){const r=fsLs(leaf.cwd||[],a);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});} else if(c==="pwd"){leaf.lines.push({text:pathStr(leaf.cwd||[]),cls:"output"});} else if(c==="cat"){const r=fsCat(leaf.cwd||[],a);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});} else if(c==="tree"){const r=fsTree(leaf.cwd||[],a);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});} else if(COMMANDS[c])leaf.lines.push({text:COMMANDS[c](),cls:"output"}); else leaf.lines.push({text:`Running: ${cmd}`,cls:"system"}); }
+function collectColors(tree,arr){ if(!tree)return; if(tree.type==="leaf"){arr.push(tree.colorIdx||0);return;} collectColors(tree.first,arr); collectColors(tree.second,arr); }
+
+// ═══ Session Management ══════════════════════════════════════
+function createOpenSession(name,savedId){
+  const leaf=createLeaf();
+  const s={id:`os_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,name:name||"untitled",windows:[{id:++tabIdCounter,name:"main",tree:leaf,activeId:leaf.id}],activeWindowIdx:0,savedId:savedId||null};
+  openSessions.push(s);
+  return s;
+}
+
+function openSavedSession(saved){
+  // Check if already open
+  const existing=openSessions.findIndex(s=>s.savedId===saved.id);
+  if(existing!==-1){ activeSessionIdx=existing; screenMode="terminal"; render(); return; }
+  const data=saved.data;
+  if(data.fs) loadFS(data.fs);
+  const s={id:`os_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,name:saved.name,windows:[],activeWindowIdx:0,savedId:saved.id};
+  tabIdCounter=0;
+  data.windows.forEach(ws=>{ const tree=deserializeTree(ws.tree); const ids=getAllLeafIds(tree); s.windows.push({id:++tabIdCounter,name:ws.name,tree,activeId:ids[0]}); });
+  s.activeWindowIdx=Math.min(data.activeWindowIdx||0,s.windows.length-1);
+  openSessions.push(s);
+  activeSessionIdx=openSessions.length-1;
+  zoomedId=null; screenMode="terminal"; render();
+}
+
+function startNewSession(){
+  const s=createOpenSession(`session-${openSessions.length+1}`);
+  activeSessionIdx=openSessions.length-1;
+  zoomedId=null; screenMode="terminal"; render();
+}
+
+function switchSession(idx){
+  if(idx<0||idx>=openSessions.length)return;
+  zoomedId=null; activeSessionIdx=idx; screenMode="terminal"; render();
+}
+
+function closeOpenSession(idx){
+  // Auto-save if linked
+  const s=openSessions[idx];
+  if(s.savedId){ const si=savedSessions.findIndex(sv=>sv.id===s.savedId); if(si!==-1){ savedSessions[si].data=serializeOpenSession(s); savedSessions[si].savedAt=new Date().toISOString(); persistSessions(); } }
+  openSessions.splice(idx,1);
+  if(openSessions.length===0){ activeSessionIdx=-1; screenMode="welcome"; }
+  else{ if(activeSessionIdx>=openSessions.length) activeSessionIdx=openSessions.length-1; }
+  render();
+}
+
+function nextSession(){ if(openSessions.length>1) switchSession((activeSessionIdx+1)%openSessions.length); }
+function prevSession(){ if(openSessions.length>1) switchSession((activeSessionIdx-1+openSessions.length)%openSessions.length); }
+
+function goHome(){
+  // Auto-save all open sessions with savedId
+  openSessions.forEach(s=>{ if(s.savedId){ const si=savedSessions.findIndex(sv=>sv.id===s.savedId); if(si!==-1){ savedSessions[si].data=serializeOpenSession(s); savedSessions[si].savedAt=new Date().toISOString(); } } });
+  persistSessions();
+  screenMode="welcome"; render();
+}
+
+async function saveSessionAs(name){
+  const s=curSess(); if(!s)return;
+  const data=serializeOpenSession(s);
+  if(s.savedId){ const si=savedSessions.findIndex(sv=>sv.id===s.savedId); if(si!==-1){ savedSessions[si].name=name; savedSessions[si].data=data; savedSessions[si].savedAt=new Date().toISOString(); } }
+  else{ const id=`session_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; savedSessions.push({id,name,savedAt:new Date().toISOString(),data}); s.savedId=id; }
+  s.name=name; await persistSessions(); render();
+}
+
+async function deleteSession(id){
+  savedSessions=savedSessions.filter(s=>s.id!==id);
+  // Unlink any open session
+  openSessions.forEach(os=>{ if(os.savedId===id) os.savedId=null; });
+  await persistSessions(); render();
+}
+
+// ═══ Export / Import ═════════════════════════════════════════
+function exportSession(sessionData,name){
+  const blob=new Blob([JSON.stringify({warsha:true,version:VERSION,name,data:sessionData},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`warsha-${name.replace(/\s+/g,"-").toLowerCase()}.json`; a.click();
+}
+
+function exportCurrentSession(){
+  const s=curSess(); if(!s)return;
+  exportSession(serializeOpenSession(s),s.name);
+}
+
+function exportSavedSession(saved){
+  exportSession(saved.data,saved.name);
+}
+
+function exportAllSessions(){
+  const blob=new Blob([JSON.stringify({warsha:true,version:VERSION,type:"all",sessions:savedSessions},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="warsha-all-sessions.json"; a.click();
+}
+
+function triggerImport(){
+  document.getElementById("import-input").click();
+}
+
+document.getElementById("import-input").addEventListener("change",async(e)=>{
+  const file=e.target.files[0]; if(!file)return;
+  try{
+    const text=await file.text();
+    const json=JSON.parse(text);
+    if(!json.warsha){ alert("Not a Warsha session file."); return; }
+    if(json.type==="all"&&json.sessions){
+      // Import all
+      let count=0;
+      json.sessions.forEach(s=>{ const id=`session_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; savedSessions.push({id,name:s.name,savedAt:s.savedAt||new Date().toISOString(),data:s.data}); count++; });
+      await persistSessions(); render();
+      alert(`Imported ${count} sessions.`);
+    } else if(json.data){
+      // Import single
+      const id=`session_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      savedSessions.push({id,name:json.name||"Imported",savedAt:new Date().toISOString(),data:json.data});
+      await persistSessions(); render();
+    }
+  }catch(err){ alert("Failed to import: "+err.message); }
+  e.target.value="";
+});
+
+// ═══ Window/Tab within session ═══════════════════════════════
+function createWindow(name){ const s=curSess(); if(!s)return; const leaf=createLeaf(); const w={id:++tabIdCounter,name:name||`window-${s.windows.length+1}`,tree:leaf,activeId:leaf.id}; s.windows.push(w); return w; }
+function switchToWindow(idx){ const s=curSess(); if(!s||idx<0||idx>=s.windows.length)return; zoomedId=null; s.activeWindowIdx=idx; render(); }
+function closeWindow(id){ const s=curSess(); if(!s||s.windows.length<=1)return; const idx=s.windows.findIndex(w=>w.id===id); if(idx===-1)return; s.windows.splice(idx,1); if(s.activeWindowIdx>=s.windows.length)s.activeWindowIdx=s.windows.length-1; zoomedId=null; render(); }
+function nextWindow(){ const s=curSess(); if(!s)return; switchToWindow((s.activeWindowIdx+1)%s.windows.length); }
+function prevWindow(){ const s=curSess(); if(!s)return; switchToWindow((s.activeWindowIdx-1+s.windows.length)%s.windows.length); }
+
+// ═══ Actions ═════════════════════════════════════════════════
+function setActive(id){ const w=curWin(); if(w)w.activeId=id; render(); }
+function doSplit(id,dir){ const w=curWin(); if(!w)return; w.tree=splitPaneInTree(w.tree,id,dir); render(); }
+function doClose(id){ disconnectPane(id); const w=curWin(); if(!w)return; if(getAllLeafIds(w.tree).length<=1)return; w.tree=removePaneFromTree(w.tree,id); const ni=getAllLeafIds(w.tree); if(!ni.includes(w.activeId))w.activeId=ni[0]; if(zoomedId===id)zoomedId=null; render(); }
+function doZoomToggle(){ const w=curWin(); if(!w)return; zoomedId=zoomedId?null:w.activeId; render(); }
+function setPaneColor(pid,ci){ const w=curWin(); if(!w)return; const l=findLeaf(w.tree,pid); if(l){l.colorIdx=ci;render();} }
+
+function executeCommand(paneId,cmd){
+  const w=curWin(); if(!w)return; const leaf=findLeaf(w.tree,paneId); if(!leaf)return;
+  const trimmed=cmd.trim(); if(!trimmed)return;
+  leaf.lines.push({text:`${pathStr(leaf.cwd)} ❯ ${trimmed}`,cls:"input"}); leaf.history.push(trimmed); leaf.historyIndex=-1; leaf.input="";
+  const parts=trimmed.split(" "),command=parts[0].toLowerCase(),args=parts.slice(1).join(" ");
+  const s=curSess();
+
+  if(command==="clear"){leaf.lines=[];render();return;}
+  // Server command — toggle live/local
+  if(command==="server"){
+    if(args==="on"||args==="connect"){
+      detectServer().then(live=>{
+        if(live){serverMode=true;leaf.lines.push({text:"Server connected — LIVE mode",cls:"system"});connectPane(paneId);}
+        else leaf.lines.push({text:"No server found at "+WS_URL,cls:"error"});
+        render();
+      });return;
+    } else if(args==="off"||args==="disconnect"){
+      serverMode=false;disconnectPane(paneId);
+      leaf.lines.push({text:"Disconnected — LOCAL mode",cls:"system"});render();return;
+    } else {
+      leaf.lines.push({text:`Server: ${serverMode?"LIVE ("+WS_URL+")":"LOCAL (virtual filesystem)"}\nUsage: server on | server off`,cls:"output"});render();return;
+    }
+  }
+  // ── Filesystem commands ──
+  if(command==="pwd"){leaf.lines.push({text:pathStr(leaf.cwd),cls:"output"});render();return;}
+  if(command==="ls"){const r=fsLs(leaf.cwd,args);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});render();return;}
+  if(command==="cd"){const r=fsCd(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});else leaf.cwd=r.cwd;render();return;}
+  if(command==="cat"){const r=fsCat(leaf.cwd,args);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});render();return;}
+  if(command==="mkdir"){const r=fsMkdir(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});else if(r.out)leaf.lines.push({text:r.out,cls:"output"});render();return;}
+  if(command==="touch"){const r=fsTouch(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});render();return;}
+  if(command==="rm"||command==="rmdir"){const r=fsRm(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});render();return;}
+  if(command==="mv"){const r=fsMv(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});render();return;}
+  if(command==="cp"){const r=fsCp(leaf.cwd,args);if(r.err)leaf.lines.push({text:r.err,cls:"error"});render();return;}
+  if(command==="tree"){const r=fsTree(leaf.cwd,args);leaf.lines.push({text:r.err||r.out,cls:r.err?"error":"output"});render();return;}
+  if(command==="head"){
+    if(!args){leaf.lines.push({text:"head: missing operand",cls:"error"});render();return;}
+    const r=fsCat(leaf.cwd,args);
+    if(r.err){leaf.lines.push({text:r.err,cls:"error"});}
+    else{leaf.lines.push({text:r.out.split("\n").slice(0,10).join("\n"),cls:"output"});}
+    render();return;
+  }
+  if(command==="wc"){
+    if(!args){leaf.lines.push({text:"wc: missing operand",cls:"error"});render();return;}
+    const r=fsCat(leaf.cwd,args);
+    if(r.err){leaf.lines.push({text:r.err,cls:"error"});}
+    else{const lines=r.out.split("\n").length,words=r.out.split(/\s+/).filter(Boolean).length,chars=r.out.length;leaf.lines.push({text:`  ${lines}  ${words}  ${chars}  ${args}`,cls:"output"});}
+    render();return;
+  }
+  // Check echo redirect (echo text > file)
+  if(command==="echo" && (trimmed.includes(" > ") || trimmed.includes(" >> "))){
+    const r=fsWrite(leaf.cwd,trimmed);
+    if(r){if(r.err)leaf.lines.push({text:r.err,cls:"error"});render();return;}
+  }
+  if(command==="mode"){toggleMode();leaf.lines.push({text:`Mode: ${appMode}`,cls:"output"});render();return;}
+  if(command==="settings"){showSettings();leaf.lines.push({text:"Settings opened.",cls:"system"});render();return;}
+  if(command==="split-h"||command==="split"&&args==="h"||command==="hsplit"){leaf.lines.push({text:"Split horizontal.",cls:"output"});doSplit(paneId,"horizontal");return;}
+  if(command==="split-v"||command==="split"&&args==="v"||command==="vsplit"){leaf.lines.push({text:"Split vertical.",cls:"output"});doSplit(paneId,"vertical");return;}
+  if(command==="split"&&!args){leaf.lines.push({text:"Split vertical.",cls:"output"});doSplit(paneId,"vertical");return;}
+  if(command==="close"||command==="exit"&&screenMode==="terminal"){doClose(paneId);return;}
+  if(command==="zoom"){doZoomToggle();return;}
+  if(command==="fullscreen"||command==="fs"){toggleFullscreen();leaf.lines.push({text:"Toggling fullscreen.",cls:"system"});render();return;}
+  if(command==="detach"||command==="home"){goHome();return;}
+  if(command==="save"){showSaveModal();render();return;}
+  if(command==="theme"){
+    // Friendly alias: theme name OR theme (list)
+    if(!args){leaf.lines.push({text:PANE_COLORS.map((c,i)=>`  ${i===leaf.colorIdx?"▸":" "} ${c.name.padEnd(18)} █`).join("\n"),cls:"output"});render();return;}
+    const t=args.toLowerCase().trim();
+    const idx=PANE_COLORS.findIndex(c=>c.name.toLowerCase().includes(t));
+    if(idx!==-1){leaf.colorIdx=idx;leaf.lines.push({text:`Theme: ${PANE_COLORS[idx].name}`,cls:"output"});}
+    else leaf.lines.push({text:`Unknown theme. Type 'theme' to list.`,cls:"error"});
+    render();return;
+  }
+  if(command==="export"){exportCurrentSession();leaf.lines.push({text:"Session exported.",cls:"output"});}
+  else if(command==="import"){triggerImport();leaf.lines.push({text:"Opening file picker...",cls:"system"});}
+  else if(command==="switch"){
+    const target=args.toLowerCase().trim();
+    const oi=openSessions.findIndex(os=>os.name.toLowerCase()===target);
+    if(oi!==-1){switchSession(oi);return;}
+    const si=savedSessions.findIndex(sv=>sv.name.toLowerCase()===target);
+    if(si!==-1){openSavedSession(savedSessions[si]);return;}
+    leaf.lines.push({text:`Session not found: ${args}`,cls:"error"});
+  }
+  else if(command==="sessions"){
+    let txt="Open sessions:\n";
+    openSessions.forEach((os,i)=>txt+=`  ${i===activeSessionIdx?"▸":" "} ${os.name}\n`);
+    if(savedSessions.length>0){txt+="\nSaved sessions:\n"; savedSessions.forEach(sv=>txt+=`  ${sv.name}\n`);}
+    leaf.lines.push({text:txt,cls:"output"});
+  }
+  else if(command==="panes"){const c=PANE_COLORS[leaf.colorIdx]; leaf.lines.push({text:`Pane: #${paneId}\nPanes: ${getAllLeafIds(w.tree).length}\nWindow: ${w.name}\nColor: ${c.name}\nCWD: ${pathStr(leaf.cwd)}\nSession: ${s?s.name:"—"}`,cls:"output"});}
+  else if(command==="color"){const t=args.toLowerCase().trim(); const idx=PANE_COLORS.findIndex(c=>c.name.toLowerCase().includes(t)); if(idx!==-1){leaf.colorIdx=idx;leaf.lines.push({text:`Color: ${PANE_COLORS[idx].name}`,cls:"output"});}else leaf.lines.push({text:`Unknown color. Type 'colors' or 'theme'.`,cls:"error"});}
+  else if(command==="new-tab"){const nw=createWindow(args||undefined);s.activeWindowIdx=s.windows.length-1;leaf.lines.push({text:`Tab: ${nw.name}`,cls:"output"});render();return;}
+  else if(command==="rename"){if(args){w.name=args;leaf.lines.push({text:`Tab: ${args}`,cls:"output"});}else leaf.lines.push({text:"Usage: rename <n>",cls:"error"});}
+  else if(command==="echo"){leaf.lines.push({text:args||"",cls:"output"});}
+  else if(command==="layout"){doQuickLayout(args,leaf);render();return;}
+  else if(command==="watch"){
+    if(!args){leaf.lines.push({text:"Usage: watch [regex] [command]",cls:"error"});}
+    else{const sp=args.indexOf(" "); if(sp===-1){leaf.lines.push({text:"Usage: watch [regex] [command]",cls:"error"});}
+    else{const pat=args.slice(0,sp),cmd=args.slice(sp+1); const wid=`w${Date.now()}`; watchers.push({id:wid,paneId:paneId,pattern:pat,action:cmd,targetPaneId:paneId}); leaf.lines.push({text:`Watcher set: when output matches "${pat}" → run "${cmd}"`,cls:"output"});}}
+  }
+  else if(command==="unwatch"){watchers=watchers.filter(w=>w.paneId!==paneId);leaf.lines.push({text:"All watchers removed from this pane.",cls:"output"});}
+  else if(command==="timer"){
+    const sp=args.indexOf(" "); if(sp===-1||!args){leaf.lines.push({text:"Usage: timer [seconds] [command]",cls:"error"});}
+    else{const sec=parseInt(args.slice(0,sp)),cmd=args.slice(sp+1); if(isNaN(sec)||sec<1){leaf.lines.push({text:"Seconds must be a number >= 1",cls:"error"});}
+    else{const tid=`t${Date.now()}`; const handle=setInterval(()=>{const lf=findLeaf(curWin()?.tree,paneId); if(!lf){clearInterval(handle);return;} lf.lines.push({text:`❯ ${cmd}`,cls:"input"}); execStartup(lf,cmd); checkWatchers(paneId,lf); render();},sec*1000); timers.push({id:tid,paneId,command:cmd,intervalMs:sec*1000,handle}); leaf.lines.push({text:`Timer set: "${cmd}" every ${sec}s`,cls:"output"});}}
+  }
+  else if(command==="untimer"){timers.filter(t=>t.paneId===paneId).forEach(t=>clearInterval(t.handle)); timers=timers.filter(t=>t.paneId!==paneId); leaf.lines.push({text:"All timers removed from this pane.",cls:"output"});}
+  else if(command==="broadcast"){
+    if(broadcastGroup.has(paneId)){broadcastGroup.delete(paneId);leaf.lines.push({text:"Broadcast: OFF",cls:"output"});}
+    else{broadcastGroup.add(paneId);leaf.lines.push({text:"Broadcast: ON — input will mirror to all broadcast panes",cls:"output"});}
+  }
+  else if(command==="search"){if(args)startSearch(paneId,args); else leaf.lines.push({text:"Usage: search [text]",cls:"error"});}
+  else if(command==="palette"){showPalette();}
+  else if(COMMANDS[command]){leaf.lines.push({text:COMMANDS[command](),cls:"output"});}
+  else{leaf.lines.push({text:`warsha: command not found: ${command}\nType 'help' for available commands.`,cls:"error"});}
+
+  // Check watchers after any output
+  checkWatchers(paneId,leaf);
+  // Broadcast: if this pane is in broadcast group, mirror command to others
+  if(broadcastGroup.has(paneId)&&broadcastGroup.size>1){
+    broadcastGroup.forEach(bpid=>{if(bpid!==paneId){const bl=findLeaf(curWin()?.tree,bpid);if(bl){bl.lines.push({text:`❯ ${trimmed}`,cls:"input"});execStartup(bl,trimmed);}}});
+  }
+  render();
+}
+
+// ═══ Quick Layout ════════════════════════════════════════════
+function doQuickLayout(args,leaf){
+  const w=curWin(); if(!w)return;
+  const a=args.toLowerCase().trim();
+  if(a==="2x2"||a==="4"){
+    // Build 2x2 grid
+    const l1=createLeaf(),l2=createLeaf(),l3=createLeaf(),l4=createLeaf();
+    w.tree={type:"split",direction:"horizontal",ratio:0.5,_splitId:`s${++splitIdCounter}`,
+      first:{type:"split",direction:"vertical",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l1,second:l2},
+      second:{type:"split",direction:"vertical",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l3,second:l4}};
+    w.activeId=l1.id; leaf.lines.push({text:"Layout: 2x2 grid",cls:"output"});
+  } else if(a==="1+2"){
+    const l1=createLeaf(),l2=createLeaf(),l3=createLeaf();
+    w.tree={type:"split",direction:"vertical",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l1,
+      second:{type:"split",direction:"horizontal",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l2,second:l3}};
+    w.activeId=l1.id; leaf.lines.push({text:"Layout: 1+2",cls:"output"});
+  } else if(a==="3x1"||a==="3"){
+    const l1=createLeaf(),l2=createLeaf(),l3=createLeaf();
+    w.tree={type:"split",direction:"vertical",ratio:0.33,_splitId:`s${++splitIdCounter}`,first:l1,
+      second:{type:"split",direction:"vertical",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l2,second:l3}};
+    w.activeId=l1.id; leaf.lines.push({text:"Layout: 3 columns",cls:"output"});
+  } else if(a==="2x1"||a==="2h"){
+    const l1=createLeaf(),l2=createLeaf();
+    w.tree={type:"split",direction:"horizontal",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l1,second:l2};
+    w.activeId=l1.id; leaf.lines.push({text:"Layout: 2 rows",cls:"output"});
+  } else if(a==="2v"||a==="2"){
+    const l1=createLeaf(),l2=createLeaf();
+    w.tree={type:"split",direction:"vertical",ratio:0.5,_splitId:`s${++splitIdCounter}`,first:l1,second:l2};
+    w.activeId=l1.id; leaf.lines.push({text:"Layout: 2 columns",cls:"output"});
+  } else { leaf.lines.push({text:"Layouts: 2x2, 1+2, 3x1, 2x1, 2v\nExample: layout 2x2",cls:"error"}); }
+}
+
+// ═══ Watchers ════════════════════════════════════════════════
+function checkWatchers(paneId,leaf){
+  watchers.filter(w=>w.paneId===paneId).forEach(w=>{
+    const lastLine=leaf.lines[leaf.lines.length-1];
+    if(lastLine&&lastLine.text){
+      try{ if(new RegExp(w.pattern,"i").test(lastLine.text)){
+        const tl=findLeaf(curWin()?.tree,w.targetPaneId)||leaf;
+        tl.lines.push({text:`❯ ${w.action} [triggered by watcher]`,cls:"input"});
+        execStartup(tl,w.action);
+      }}catch(e){}
+    }
+  });
+}
+
+// ═══ Search ══════════════════════════════════════════════════
+function startSearch(paneId,query){
+  searchState[paneId]={query:query.toLowerCase(),matches:[],currentIdx:0};
+  render();
+}
+function clearSearch(paneId){
+  delete searchState[paneId]; render();
+}
+
+// ═══ Command Palette ═════════════════════════════════════════
+const PALETTE_COMMANDS=[
+  {label:"Split Horizontal",action:()=>{const w=curWin();if(w)doSplit(w.activeId,"horizontal");},key:'Ctrl+B "'},
+  {label:"Split Vertical",action:()=>{const w=curWin();if(w)doSplit(w.activeId,"vertical");},key:"Ctrl+B %"},
+  {label:"Close Pane",action:()=>{const w=curWin();if(w)doClose(w.activeId);},key:"Ctrl+B x"},
+  {label:"Zoom Toggle",action:()=>doZoomToggle(),key:"Ctrl+B z"},
+  {label:"Fullscreen",action:()=>toggleFullscreen(),key:"F11"},
+  {label:"New Tab",action:()=>{const s=curSess();if(s){createWindow();s.activeWindowIdx=s.windows.length-1;render();}},key:"Ctrl+B c"},
+  {label:"Next Tab",action:()=>nextWindow(),key:"Ctrl+B n"},
+  {label:"Previous Tab",action:()=>prevWindow(),key:"Ctrl+B p"},
+  {label:"Save Session",action:()=>showSaveModal(),key:"Ctrl+B S"},
+  {label:"Session List",action:()=>{const w=curWin();if(w){const leaf=findLeaf(w.tree,w.activeId);if(leaf){let t="Sessions:\n";for(let i=0;i<openSessions.length;i++){t+="  "+(i===activeSessionIdx?"▸ ":" ")+openSessions[i].name+"\n";}leaf.lines.push({text:t,cls:"output"});render();}}},key:"Ctrl+B s"},
+  {label:"Detach (Home)",action:()=>goHome(),key:"Ctrl+B d"},
+  {label:"Home / Welcome",action:()=>goHome(),key:""},
+  {label:"Settings",action:()=>showSettings(),key:""},
+  {label:"Toggle Mode (Basic/Advanced)",action:()=>toggleMode(),key:""},
+  {label:"Layout: 2x2 Grid",action:()=>{const w=curWin();if(w){const l=findLeaf(w.tree,w.activeId);if(l)doQuickLayout("2x2",l);render();}},key:""},
+  {label:"Layout: 2 Columns",action:()=>{const w=curWin();if(w){const l=findLeaf(w.tree,w.activeId);if(l)doQuickLayout("2v",l);render();}},key:""},
+  {label:"Layout: 1+2",action:()=>{const w=curWin();if(w){const l=findLeaf(w.tree,w.activeId);if(l)doQuickLayout("1+2",l);render();}},key:""},
+  {label:"Layout: 3 Columns",action:()=>{const w=curWin();if(w){const l=findLeaf(w.tree,w.activeId);if(l)doQuickLayout("3x1",l);render();}},key:""},
+  {label:"Export Session",action:()=>exportCurrentSession(),key:""},
+  {label:"Import Session",action:()=>triggerImport(),key:""},
+  {label:"Toggle Broadcast on Pane",action:()=>{const w=curWin();if(w){const pid=w.activeId;if(broadcastGroup.has(pid))broadcastGroup.delete(pid);else broadcastGroup.add(pid);render();}},key:""},
+  {label:"Clear Pane",action:()=>{const w=curWin();if(w){const l=findLeaf(w.tree,w.activeId);if(l){l.lines=[];render();}}},key:"Ctrl+L"},
+  {label:"Search in Pane",action:()=>{const w=curWin();if(w)startSearch(w.activeId,"");render();},key:"Ctrl+B f"},
+];
+
+function showPalette(){
+  paletteOpen=true; paletteSelected=0;
+  document.getElementById("cmd-palette").classList.add("show");
+  const input=document.getElementById("palette-input"); input.value=""; input.focus();
+  renderPaletteResults("");
+}
+function hidePalette(){
+  paletteOpen=false;
+  document.getElementById("cmd-palette").classList.remove("show");
+  // Refocus active pane
+  const w=curWin(); if(w){ const inp=document.querySelector(`.pane-leaf.active .pane-input-wrap input`); if(inp) inp.focus(); }
+}
+function renderPaletteResults(query){
+  const el=document.getElementById("palette-results");
+  const q=query.toLowerCase();
+  const filtered=q?PALETTE_COMMANDS.filter(c=>c.label.toLowerCase().includes(q)):PALETTE_COMMANDS;
+  el.innerHTML=filtered.map((c,i)=>`<div class="palette-item${i===paletteSelected?" selected":""}" data-idx="${i}">${c.label}${c.key?`<span class="pal-key">${c.key}</span>`:""}</div>`).join("");
+  el.querySelectorAll(".palette-item").forEach(item=>{
+    item.onclick=()=>{const idx=parseInt(item.dataset.idx); if(filtered[idx]){hidePalette();filtered[idx].action();}};
+  });
+}
+
+document.getElementById("palette-input").addEventListener("input",(e)=>{paletteSelected=0;renderPaletteResults(e.target.value);});
+document.getElementById("palette-input").addEventListener("keydown",(e)=>{
+  e.stopPropagation();
+  const q=e.target.value.toLowerCase();
+  const filtered=q?PALETTE_COMMANDS.filter(c=>c.label.toLowerCase().includes(q)):PALETTE_COMMANDS;
+  if(e.key==="ArrowDown"){e.preventDefault();paletteSelected=Math.min(paletteSelected+1,filtered.length-1);renderPaletteResults(q);}
+  else if(e.key==="ArrowUp"){e.preventDefault();paletteSelected=Math.max(paletteSelected-1,0);renderPaletteResults(q);}
+  else if(e.key==="Enter"){e.preventDefault();if(filtered[paletteSelected]){hidePalette();filtered[paletteSelected].action();}}
+  else if(e.key==="Escape"){hidePalette();}
+});
+
+// ═══ Launch Workspace Preset ═════════════════════════════════
+function launchPreset(preset){
+  const s=createOpenSession(preset.name);
+  activeSessionIdx=openSessions.length-1;
+  const win=s.windows[0];
+  // Build tree from preset layout
+  win.tree=buildPresetTree(preset.layout[0]);
+  const ids=getAllLeafIds(win.tree);
+  win.activeId=ids[0];
+  zoomedId=null; screenMode="terminal"; render();
+}
+
+function buildPresetTree(node){
+  if(!node)return createLeaf();
+  if(node.cmd!==undefined){
+    const leaf=createLeaf();
+    if(node.color!==undefined) leaf.colorIdx=node.color;
+    if(node.cmd){leaf.lines.push({text:`❯ ${node.cmd}`,cls:"input"});execStartup(leaf,node.cmd);}
+    return leaf;
+  }
+  return {type:"split",direction:node.dir,ratio:node.ratio||0.5,_splitId:`s${++splitIdCounter}`,
+    first:buildPresetTree(node.first),second:buildPresetTree(node.second)};
+}
+
+// ═══ Context Menu ════════════════════════════════════════════
+function showContextMenu(e,paneId){
+  e.preventDefault();e.stopPropagation();setActive(paneId);
+  const menu=document.getElementById("context-menu"),w=curWin(),leaf=findLeaf(w.tree,paneId); if(!leaf)return;
+  const canClose=getAllLeafIds(w.tree).length>1;
+  const adv=isAdvanced();
+  let html=`<div class="ctx-item" data-action="split-h">Split Horizontal${adv?'<span class="ctx-shortcut">Ctrl+B "</span>':''}</div>
+<div class="ctx-item" data-action="split-v">Split Vertical${adv?'<span class="ctx-shortcut">Ctrl+B %</span>':''}</div><div class="ctx-sep"></div>
+<div class="ctx-item" data-action="zoom">${zoomedId?"Unzoom":"Zoom"}${adv?'<span class="ctx-shortcut">Ctrl+B z</span>':''}</div>
+${canClose?`<div class="ctx-item" data-action="close">Close Pane${adv?'<span class="ctx-shortcut">Ctrl+B x</span>':''}</div>`:''}
+<div class="ctx-sep"></div>
+<div class="ctx-item" data-action="clear">Clear Output${adv?'<span class="ctx-shortcut">Ctrl+L</span>':''}</div>
+<div class="ctx-item" data-action="save">Save Session${adv?'<span class="ctx-shortcut">Ctrl+B S</span>':''}</div>
+${adv?'<div class="ctx-item" data-action="export">Export Session</div>':''}
+${adv?`<div class="ctx-sep"></div><div class="ctx-item" data-action="broadcast">${broadcastGroup.has(paneId)?"Broadcast: OFF":"Broadcast: ON"}</div><div class="ctx-item" data-action="search">Search in Pane<span class="ctx-shortcut">Ctrl+B f</span></div><div class="ctx-item" data-action="palette">Command Palette<span class="ctx-shortcut">Ctrl+K</span></div>`:''}
+<div class="ctx-sep"></div><div class="ctx-label">Pane Color</div>
+<div class="ctx-colors">${PANE_COLORS.map((c,i)=>`<div class="ctx-color-swatch${leaf.colorIdx===i?" selected":""}" data-ci="${i}" style="background:${c.accent};" title="${c.name}"></div>`).join("")}</div>`;
+  menu.innerHTML=html; menu.style.display="block";
+  let x=e.clientX,y=e.clientY; if(x+menu.offsetWidth>window.innerWidth)x=window.innerWidth-menu.offsetWidth-4; if(y+menu.offsetHeight>window.innerHeight)y=window.innerHeight-menu.offsetHeight-4;
+  menu.style.left=x+"px"; menu.style.top=y+"px";
+  menu.querySelectorAll(".ctx-item").forEach(item=>{item.onclick=()=>{const a=item.dataset.action;hideContextMenu();if(a==="split-h")doSplit(paneId,"horizontal");else if(a==="split-v")doSplit(paneId,"vertical");else if(a==="zoom")doZoomToggle();else if(a==="close")doClose(paneId);else if(a==="clear"){leaf.lines=[];render();}else if(a==="save")showSaveModal();else if(a==="export")exportCurrentSession();else if(a==="broadcast"){if(broadcastGroup.has(paneId))broadcastGroup.delete(paneId);else broadcastGroup.add(paneId);render();}else if(a==="search")startSearch(paneId,"");else if(a==="palette")showPalette();};});
+  menu.querySelectorAll(".ctx-color-swatch").forEach(sw=>{sw.onclick=(ev)=>{ev.stopPropagation();setPaneColor(paneId,parseInt(sw.dataset.ci));hideContextMenu();};});
+}
+function hideContextMenu(){document.getElementById("context-menu").style.display="none";}
+document.addEventListener("click",(e)=>{hideContextMenu();if(paletteOpen&&!e.target.closest("#cmd-palette"))hidePalette();});
+
+// ═══ Save Modal ══════════════════════════════════════════════
+function showSaveModal(){const m=document.getElementById("save-modal"),i=document.getElementById("save-name");m.classList.add("show");const s=curSess();i.value=s?s.name:"";requestAnimationFrame(()=>{i.focus();i.select();});}
+function hideSaveModal(){document.getElementById("save-modal").classList.remove("show");}
+document.getElementById("save-cancel").onclick=hideSaveModal;
+document.getElementById("save-confirm").onclick=()=>{const n=document.getElementById("save-name").value.trim();if(n){saveSessionAs(n);hideSaveModal();}};
+document.getElementById("save-name").addEventListener("keydown",(e)=>{e.stopPropagation();if(e.key==="Enter"){const n=e.target.value.trim();if(n){saveSessionAs(n);hideSaveModal();}}if(e.key==="Escape")hideSaveModal();});
+
+// ═══ Rendering ═══════════════════════════════════════════════
+function render(){
+  const welc=document.getElementById("welcome-screen"),pane=document.getElementById("pane-container"),tbar=document.getElementById("tab-bar"),sbar=document.getElementById("session-bar");
+  if(screenMode==="welcome"){
+    welc.style.display="flex"; pane.style.display="none"; tbar.style.display="none"; sbar.style.display=openSessions.length>0&&isAdvanced()?"flex":"none";
+    renderWelcome(); if(isAdvanced())renderSessionBar();
+  } else {
+    welc.style.display="none"; pane.style.display="block"; tbar.style.display="flex"; sbar.style.display=openSessions.length>1&&isAdvanced()?"flex":"none";
+    if(isAdvanced())renderSessionBar(); else sbar.innerHTML=""; renderTabBar(); renderPanes();
+  }
+  updateStatus();
+}
+
+function renderSessionBar(){
+  const bar=document.getElementById("session-bar"); bar.innerHTML="";
+  if(openSessions.length===0&&screenMode==="welcome")return;
+  // Home
+  const home=document.createElement("div"); home.className="sess-home"; home.innerHTML="⌂"; home.title="Welcome screen"; home.onclick=goHome; bar.appendChild(home);
+  openSessions.forEach((s,i)=>{
+    const tab=document.createElement("div"); tab.className=`sess-tab${i===activeSessionIdx&&screenMode==="terminal"?" active":""}`;
+    const dot=document.createElement("div"); dot.className=`sess-indicator ${i===activeSessionIdx&&screenMode==="terminal"?"active-dot":"idle"}`;
+    const name=document.createElement("span"); name.textContent=s.name; name.style.overflow="hidden"; name.style.textOverflow="ellipsis"; name.style.maxWidth="100px";
+    const close=document.createElement("span"); close.className="sess-close"; close.textContent="×"; close.onclick=(e)=>{e.stopPropagation();closeOpenSession(i);};
+    tab.appendChild(dot); tab.appendChild(name); tab.appendChild(close);
+    tab.onclick=()=>switchSession(i);
+    bar.appendChild(tab);
+  });
+  bar.classList.toggle("show",openSessions.length>0||screenMode==="terminal");
+}
+
+function renderWelcome(){
+  const el=document.getElementById("welcome-screen");
+  let html=`<div class="welcome-title">ورشة</div><div class="welcome-sub">Your digital workshop — build once, reuse forever</div>`;
+  if(savedSessions.length>0){
+    html+=`<div class="welcome-section-title">Saved Sessions</div><div class="session-cards">`;
+    savedSessions.forEach((s,i)=>{
+      const d=s.data, winCount=d.windows?d.windows.length:0; let totalPanes=0,colorDots=[];
+      if(d.windows) d.windows.forEach(w=>{if(w.paneCount)totalPanes+=w.paneCount; collectColors(w.tree,colorDots);});
+      const isOpen=openSessions.some(os=>os.savedId===s.id);
+      const dotsHtml=[...new Set(colorDots)].slice(0,6).map(ci=>`<div class="card-color-dot" style="background:${PANE_COLORS[ci]?.accent||PANE_COLORS[0].accent}"></div>`).join("");
+      html+=`<div class="session-card" data-si="${i}" style="animation-delay:${i*0.06}s">
+        ${isOpen?'<div class="card-running">RUNNING</div>':""}
+        ${isAdvanced()?`<div class="card-export" data-ei="${i}" title="Export">↗</div>`:""}
+        <div class="card-delete" data-di="${i}" title="Delete">×</div>
+        <div class="card-name">${escHtml(s.name)}</div>
+        <div class="card-info">${winCount} window${winCount!==1?"s":""} · ${totalPanes} pane${totalPanes!==1?"s":""}</div>
+        <div class="card-colors">${dotsHtml}</div>
+        <div class="card-time">${getTimeAgo(s.savedAt)}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+    if(savedSessions.length>1&&isAdvanced()) html+=`<div class="export-all-btn" id="export-all-btn">Export All Sessions</div>`;
+  }
+  html+=`<div class="welcome-section-title">Start</div><div class="session-cards">
+    <div class="new-session-card" id="new-sess-btn"><div class="plus">+</div><div class="label">New Session</div></div>
+    ${isAdvanced()?'<div class="import-card" id="import-btn"><div class="icon">📥</div><div class="label">Import Session</div></div>':''}
+  </div>`;
+  // Workspace Presets
+  html+=`<div class="welcome-section-title">Workspace Presets</div><div class="preset-cards">`;
+  WORKSPACE_PRESETS.forEach((p,i)=>{
+    html+=`<div class="preset-card" data-pi="${i}"><div class="preset-icon">${p.icon}</div><div class="preset-name">${p.name}</div><div class="preset-desc">${p.desc}</div></div>`;
+  });
+  html+=`</div>`;
+  if(!isAdvanced()) html+=`<div class="mode-nudge" id="mode-nudge">Want more power? Switch to Advanced mode →</div>`;
+  el.innerHTML=html;
+  el.querySelectorAll(".session-card").forEach(c=>c.addEventListener("click",(e)=>{if(e.target.closest(".card-delete")||e.target.closest(".card-export"))return; const idx=parseInt(c.dataset.si); if(savedSessions[idx])openSavedSession(savedSessions[idx]);}));
+  el.querySelectorAll(".card-delete").forEach(b=>b.addEventListener("click",(e)=>{e.stopPropagation(); const idx=parseInt(b.dataset.di); if(savedSessions[idx])deleteSession(savedSessions[idx].id);}));
+  el.querySelectorAll(".card-export").forEach(b=>b.addEventListener("click",(e)=>{e.stopPropagation(); const idx=parseInt(b.dataset.ei); if(savedSessions[idx])exportSavedSession(savedSessions[idx]);}));
+  document.getElementById("new-sess-btn")?.addEventListener("click",startNewSession);
+  document.getElementById("import-btn")?.addEventListener("click",triggerImport);
+  document.getElementById("export-all-btn")?.addEventListener("click",exportAllSessions);
+  document.getElementById("mode-nudge")?.addEventListener("click",()=>{setMode("advanced");showSettings();});
+  el.querySelectorAll(".preset-card").forEach(c=>c.addEventListener("click",()=>{const idx=parseInt(c.dataset.pi);if(WORKSPACE_PRESETS[idx])launchPreset(WORKSPACE_PRESETS[idx]);}));
+}
+
+function renderTabBar(){
+  const bar=document.getElementById("tab-bar"); bar.innerHTML=""; const s=curSess(); if(!s)return;
+  s.windows.forEach((w,i)=>{
+    const tab=document.createElement("div"); tab.className=`tab${i===s.activeWindowIdx?" active":""}`;
+    if(renamingTabId===w.id){
+      const inp=document.createElement("input"); inp.className="tab-rename-input"; inp.value=w.name;
+      inp.addEventListener("keydown",(e)=>{if(e.key==="Enter"){w.name=inp.value||w.name;renamingTabId=null;render();}if(e.key==="Escape"){renamingTabId=null;render();}e.stopPropagation();});
+      inp.addEventListener("blur",()=>{w.name=inp.value||w.name;renamingTabId=null;render();}); tab.appendChild(inp); bar.appendChild(tab);
+      requestAnimationFrame(()=>{inp.focus();inp.select();}); return;
+    }
+    const idx=document.createElement("span"); idx.className="tab-index"; idx.textContent=i+1;
+    const name=document.createElement("span"); name.className="tab-name"; name.textContent=w.name;
+    const close=document.createElement("span"); close.className="tab-close"; close.textContent="×"; close.addEventListener("click",(e)=>{e.stopPropagation();closeWindow(w.id);});
+    tab.appendChild(idx); tab.appendChild(name); tab.appendChild(close);
+    tab.addEventListener("click",()=>switchToWindow(i));
+    tab.addEventListener("dblclick",(e)=>{e.stopPropagation();renamingTabId=w.id;render();});
+    bar.appendChild(tab);
+  });
+  const newBtn=document.createElement("div"); newBtn.className="tab-new"; newBtn.textContent="+"; newBtn.addEventListener("click",()=>{createWindow();s.activeWindowIdx=s.windows.length-1;render();}); bar.appendChild(newBtn);
+  const saveBtn=document.createElement("div"); saveBtn.className="tab-save"; saveBtn.innerHTML=`💾 ${s.savedId?"Save":"Save As"}`; saveBtn.addEventListener("click",showSaveModal); bar.appendChild(saveBtn);
+}
+
+function renderPanes(){
+  const container=document.getElementById("pane-container"); container.innerHTML=""; const w=curWin(); if(!w)return;
+  const dn=zoomedId?(findLeaf(w.tree,zoomedId)||w.tree):w.tree;
+  container.appendChild(buildNodeEl(dn,w.activeId));
+  if(zoomedId){const b=document.createElement("div");b.className="overlay-badge";b.style.cssText="top:8px;background:var(--accent);color:var(--bg);";b.textContent="ZOOMED — Ctrl+B z to exit";container.appendChild(b);}
+  if(prefixMode){const b=document.createElement("div");b.className="overlay-badge";b.style.cssText="bottom:8px;background:var(--warning);color:var(--bg);";b.textContent='PREFIX — " % x z o c n p d s w [ q t 0-9 or arrows';container.appendChild(b);}
+}
+
+function buildNodeEl(node,activeId){
+  if(node.type==="leaf")return buildPaneEl(node,activeId);
+  const isH=node.direction==="horizontal",wrap=document.createElement("div"); wrap.className=`split-container ${node.direction}`;
+  const f=document.createElement("div"); f.className="split-child"; f.style[isH?"height":"width"]=`calc(${node.ratio*100}% - 2px)`; f.style[isH?"width":"height"]="100%"; f.appendChild(buildNodeEl(node.first,activeId));
+  const d=document.createElement("div"); d.className=`divider ${node.direction}`; d.dataset.splitId=node._splitId; d.dataset.direction=node.direction; d.addEventListener("mousedown",onDividerMouseDown);
+  const s=document.createElement("div"); s.className="split-child"; s.style[isH?"height":"width"]=`calc(${(1-node.ratio)*100}% - 2px)`; s.style[isH?"width":"height"]="100%"; s.appendChild(buildNodeEl(node.second,activeId));
+  wrap.appendChild(f); wrap.appendChild(d); wrap.appendChild(s); return wrap;
+}
+
+function buildPaneEl(pane,activeId){
+  const isActive=pane.id===activeId, c=PANE_COLORS[pane.colorIdx]||PANE_COLORS[0];
+  const isLight=!!c.light;
+  const el=document.createElement("div"); el.className=`pane-leaf${isActive?" active":""}${isLight?" light-pane":""}`;  el.style.background=c.bg; el.style.color=c.text;
+  el.setAttribute("data-pane-id",pane.id);
+  if(c.border) el.style.borderColor=isActive?c.accent:c.border;
+  el.addEventListener("click",(e)=>{e.stopPropagation();setActive(pane.id);}); el.addEventListener("contextmenu",(e)=>showContextMenu(e,pane.id));
+  const badge=document.createElement("div"); badge.className="pane-id"; badge.textContent=`#${pane.id}`; el.appendChild(badge);
+  if(pane.colorIdx>0){const dot=document.createElement("div");dot.className="pane-color-dot";dot.style.background=c.accent;el.appendChild(dot);}
+  // Broadcast indicator
+  if(broadcastGroup.has(pane.id)){const bc=document.createElement("div");bc.className="pane-broadcast";bc.textContent="BROADCAST";el.appendChild(bc);}
+  // Timer indicator
+  const paneTimers=timers.filter(t=>t.paneId===pane.id);
+  if(paneTimers.length>0){const ti=document.createElement("div");ti.className="pane-timer";ti.textContent=`⏱ ${paneTimers.length} timer${paneTimers.length>1?"s":""}`;el.appendChild(ti);}
+  // Watcher indicator
+  const paneWatchers=watchers.filter(w=>w.paneId===pane.id);
+  if(paneWatchers.length>0){const wi=document.createElement("div");wi.className="pane-watch";wi.textContent=`watching`;el.appendChild(wi);}
+  // Search bar
+  const ss=searchState[pane.id];
+  if(ss!==undefined){
+    const searchBar=document.createElement("div");searchBar.className="pane-search";
+    const si=document.createElement("input");si.type="text";si.value=ss.query||"";si.placeholder="Search...";
+    si.addEventListener("input",(ev)=>{ev.stopPropagation();searchState[pane.id].query=ev.target.value.toLowerCase();render();});
+    si.addEventListener("keydown",(ev)=>{ev.stopPropagation();if(ev.key==="Escape"){clearSearch(pane.id);}if(ev.key==="Enter"){/* could cycle matches */}});
+    const sclose=document.createElement("span");sclose.className="search-close";sclose.textContent="×";sclose.onclick=()=>clearSearch(pane.id);
+    searchBar.appendChild(si);searchBar.appendChild(sclose);el.appendChild(searchBar);
+    requestAnimationFrame(()=>si.focus());
+  }
+  // In LIVE mode: use xterm.js — a real terminal emulator
+  if(serverMode){
+    el.addEventListener("contextmenu",(e)=>showContextMenu(e,pane.id));
+    el.addEventListener("click",(e)=>{
+      e.stopPropagation();setActive(pane.id);
+      const inst=xtermInstances[pane.id];
+      if(inst) inst.term.focus();
+    });
+    const inst=xtermInstances[pane.id];
+    if(inst&&inst.container){
+      // Reparent existing xterm container — don't re-create
+      el.appendChild(inst.container);
+      requestAnimationFrame(()=>{
+        inst.fitAddon.fit();
+        if(isActive) inst.term.focus();
+      });
+    } else {
+      // First time: create container and connect
+      const xtermContainer=document.createElement("div");
+      xtermContainer.className="pane-xterm";
+      el.appendChild(xtermContainer);
+      requestAnimationFrame(()=>{
+        connectPane(pane.id, xtermContainer);
+        const newInst=xtermInstances[pane.id];
+        if(isActive&&newInst) newInst.term.focus();
+      });
+    }
+    return el;
+  }
+
+  // LOCAL mode: line-based output
+  const output=document.createElement("div"); output.className="pane-output";
+  pane.lines.forEach(l=>{
+    const d=document.createElement("div");d.className=`line ${l.cls}`;if(l.cls==="input")d.style.color=c.accent;d.textContent=l.text;
+    if(ss&&ss.query&&l.text.toLowerCase().includes(ss.query)){d.classList.add("highlight");}
+    output.appendChild(d);
+  });
+
+  // LOCAL mode: original prompt + command input
+  const inputRow=document.createElement("div"); inputRow.className="pane-input-row";
+  const prompt=document.createElement("span"); prompt.className="prompt"; prompt.style.color=c.accent;
+  const cwdDisplay=pane.cwd.length===0?"/":pane.cwd.length<=2?pathStr(pane.cwd):"~/"+pane.cwd.slice(2).join("/");
+  const cwdShort=pane.cwd.join("/")==="home/user"?"~":cwdDisplay;
+  prompt.textContent=`${cwdShort} ❯`;
+  const inputWrap=document.createElement("div"); inputWrap.className="pane-input-wrap";
+  const input=document.createElement("input"); input.type="text"; input.value=pane.input; input.style.color=c.text;
+  input.addEventListener("input",(e)=>{const lf=findLeaf(curWin()?.tree,pane.id);if(lf)lf.input=e.target.value;const cur=el.querySelector(".pane-cursor");if(cur)cur.style.left=`${e.target.value.length*7.22}px`;});
+  input.addEventListener("keydown",(e)=>onPaneKeyDown(e,pane.id));
+  const cursor=document.createElement("div"); cursor.className="pane-cursor"; cursor.style.left=`${pane.input.length*7.22}px`; cursor.style.background=c.accent;
+  inputWrap.appendChild(input); inputWrap.appendChild(cursor); inputRow.appendChild(prompt); inputRow.appendChild(inputWrap);
+  output.appendChild(inputRow); el.appendChild(output);
+  requestAnimationFrame(()=>{output.scrollTop=output.scrollHeight;if(isActive)input.focus();});
+  return el;
+}
+
+// ═══ Input ═══════════════════════════════════════════════════
+function onPaneKeyDown(e,pid){
+  const w=curWin(); if(!w)return; const leaf=findLeaf(w.tree,pid); if(!leaf)return;
+  if(e.key==="Enter"){e.preventDefault();executeCommand(pid,leaf.input);}
+  else if(e.key==="ArrowUp"){e.preventDefault();if(leaf.history.length>0){const ni=leaf.historyIndex===-1?leaf.history.length-1:Math.max(0,leaf.historyIndex-1);leaf.historyIndex=ni;leaf.input=leaf.history[ni];render();}}
+  else if(e.key==="ArrowDown"){e.preventDefault();if(leaf.historyIndex!==-1){const ni=leaf.historyIndex+1;if(ni>=leaf.history.length){leaf.historyIndex=-1;leaf.input="";}else{leaf.historyIndex=ni;leaf.input=leaf.history[ni];}render();}}
+  else if(e.key==="l"&&e.ctrlKey){e.preventDefault();leaf.lines=[];render();}
+}
+
+// ═══ Divider ═════════════════════════════════════════════════
+function onDividerMouseDown(e){
+  e.preventDefault();e.stopPropagation();
+  const sid=e.target.dataset.splitId,dir=e.target.dataset.direction,cr=document.getElementById("pane-container").getBoundingClientRect();
+  document.body.style.cursor=dir==="horizontal"?"row-resize":"col-resize"; document.body.style.userSelect="none";
+  const onMove=(ev)=>{const w=curWin();if(!w)return;const b=findSplitBounds(w.tree,sid,{t:cr.top,l:cr.left,w:cr.width,h:cr.height});if(!b)return;const r=dir==="horizontal"?(ev.clientY-b.t)/b.h:(ev.clientX-b.l)/b.w;w.tree=updateRatio(w.tree,sid,r);render();};
+  const onUp=()=>{document.body.style.cursor="";document.body.style.userSelect="";window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);setTimeout(refitXterms,50);};
+  window.addEventListener("mousemove",onMove); window.addEventListener("mouseup",onUp);
+}
+
+// ═══ Keyboard ════════════════════════════════════════════════
+window.addEventListener("keydown",(e)=>{
+  if(renamingTabId||document.getElementById("save-modal").classList.contains("show")||document.getElementById("settings-panel").classList.contains("show"))return;
+  if(paletteOpen)return; // palette handles its own keys
+  // Ctrl+K = command palette (works in any mode)
+  if(e.ctrlKey&&e.key==="k"){e.preventDefault();showPalette();return;}
+  if(screenMode==="welcome")return;
+  if(e.ctrlKey&&e.key==="b"){e.preventDefault();prefixMode=true;clearTimeout(prefixTimeout);prefixTimeout=setTimeout(()=>{prefixMode=false;render();},2000);render();return;}
+  if(prefixMode){
+    e.preventDefault();prefixMode=false;clearTimeout(prefixTimeout);
+    const w=curWin(),s=curSess();
+    if(e.key==='"'||e.key==="'")doSplit(w.activeId,"horizontal");
+    else if(e.key==="%"||e.key==="5")doSplit(w.activeId,"vertical");
+    else if(e.key==="x")doClose(w.activeId);
+    else if(e.key==="z")doZoomToggle();
+    else if(e.key==="c"){createWindow();s.activeWindowIdx=s.windows.length-1;render();}
+    else if(e.key==="n")nextWindow();
+    else if(e.key==="p")prevWindow();
+    else if(e.key===","){renamingTabId=curWin().id;render();}
+    else if(e.key==="&"||e.key==="7")closeWindow(curWin().id);
+    else if(e.key==="("||e.key==="9")prevSession();
+    else if(e.key===")"||e.key==="0"&&!e.shiftKey)nextSession();
+    // tmux: d = detach (go home)
+    else if(e.key==="d")goHome();
+    // tmux: o = next pane
+    else if(e.key==="o")setActive(getNeighborId("next"));
+    // tmux: ; = last active pane (same as o for simplicity)
+    else if(e.key===";")setActive(getNeighborId("next"));
+    // tmux: l = last window
+    else if(e.key==="l"){if(s&&s.windows.length>1){const prev=(s.activeWindowIdx-1+s.windows.length)%s.windows.length;switchToWindow(prev);}}
+    // tmux: w = window list (show palette filtered to windows)
+    else if(e.key==="w"){showPalette();const pi=document.getElementById("palette-input");if(pi){pi.value="tab";renderPaletteResults("tab");}}
+    // tmux: s = session list / choose session
+    else if(e.key==="s"&&!e.shiftKey){
+      // Show sessions in active pane
+      const leaf=findLeaf(w.tree,w.activeId);
+      if(leaf){
+        let txt="Sessions:\n";
+        openSessions.forEach((os,i)=>txt+=`  ${i===activeSessionIdx?"▸":" "} ${os.name}\n`);
+        if(savedSessions.length>0){txt+="\nSaved:\n";savedSessions.forEach(sv=>txt+=`  ${sv.name}\n`);}
+        txt+="\nType: switch <name>";
+        leaf.lines.push({text:txt,cls:"output"});
+      }
+      render();
+    }
+    // Shift+S = save session (was Ctrl+B s before)
+    else if(e.key==="S")showSaveModal();
+    // tmux: [ = copy mode → we use it for search
+    else if(e.key==="["){startSearch(w.activeId,"");render();}
+    // tmux: f = find pane (search)
+    else if(e.key==="f"){startSearch(w.activeId,"");render();}
+    // tmux: t = show time
+    else if(e.key==="t"){
+      const leaf=findLeaf(w.tree,w.activeId);
+      if(leaf){leaf.lines.push({text:new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true}),cls:"output"});}
+      render();
+    }
+    // tmux: q = show pane numbers (we show pane info)
+    else if(e.key==="q"){
+      const ids=getAllLeafIds(w.tree);
+      const leaf=findLeaf(w.tree,w.activeId);
+      if(leaf){leaf.lines.push({text:`Panes: ${ids.map(id=>`#${id}${id===w.activeId?" (active)":""}`).join("  ")}`,cls:"output"});}
+      render();
+    }
+    // tmux: 0-9 = select window by index
+    else if(e.key>="0"&&e.key<="9"&&!e.shiftKey){
+      const idx=parseInt(e.key);
+      if(s&&idx<s.windows.length) switchToWindow(idx);
+    }
+    // Arrow navigation
+    else if(e.key==="ArrowRight"||e.key==="ArrowDown")setActive(getNeighborId("next"));
+    else if(e.key==="ArrowLeft"||e.key==="ArrowUp")setActive(getNeighborId("prev"));
+    else render();
+  }
+});
+
+// ═══ Status ══════════════════════════════════════════════════
+function updateStatus(){
+  if(screenMode==="welcome"){
+    document.getElementById("s-session").textContent=`sessions: ${savedSessions.length} saved · ${openSessions.length} open`;
+    document.getElementById("s-window").textContent=""; document.getElementById("s-pane").textContent=""; document.getElementById("s-panes").textContent="";
+  } else {
+    const s=curSess(),w=curWin(); if(!s||!w)return;
+    document.getElementById("s-session").textContent=`session: ${s.name}`;
+    document.getElementById("s-window").textContent=`window: ${s.activeWindowIdx+1}/${s.windows.length}`;
+    document.getElementById("s-pane").textContent=`pane: #${w.activeId}`;
+    document.getElementById("s-panes").textContent=`panes: ${getAllLeafIds(w.tree).length}`;
+  }
+  document.getElementById("s-prefix").style.display=prefixMode?"inline":"none";
+  document.getElementById("s-zoom").style.display=zoomedId?"inline":"none";
+  document.getElementById("s-mode").textContent=`mode: ${appMode}`;
+  const serverEl=document.getElementById("s-server");
+  const serverLabel=document.getElementById("s-server-label");
+  serverEl.style.display="inline";
+  if(serverMode){
+    serverLabel.textContent="LIVE";
+    serverLabel.style.color="#4caf50";
+  } else {
+    serverLabel.textContent="LOCAL";
+    serverLabel.style.color="#ff9800";
+  }
+}
+
+// ═══ Settings Panel ══════════════════════════════════════════
+function showSettings(){
+  document.getElementById("settings-panel").classList.add("show");
+  document.getElementById("settings-overlay").classList.add("show");
+  updateSettingsUI();
+}
+function hideSettings(){
+  document.getElementById("settings-panel").classList.remove("show");
+  document.getElementById("settings-overlay").classList.remove("show");
+}
+function updateSettingsUI(){
+  document.querySelectorAll(".settings-mode-card").forEach(c=>{c.classList.toggle("active",c.dataset.mode===appMode);});
+}
+document.getElementById("settings-close").onclick=hideSettings;
+document.getElementById("settings-overlay").onclick=hideSettings;
+document.querySelectorAll(".settings-mode-card").forEach(c=>{c.onclick=()=>{setMode(c.dataset.mode);updateSettingsUI();};});
+document.getElementById("s-mode").onclick=showSettings;
+function updateClock(){
+  const now=new Date(); document.getElementById("s-clock").textContent=now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+  const diff=Math.floor((Date.now()-startTime)/1000); document.getElementById("s-uptime").textContent=`up: ${Math.floor(diff/60)}m ${diff%60}s`;
+}
+
+function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function getTimeAgo(iso){const d=Date.now()-new Date(iso).getTime(),m=Math.floor(d/60000);if(m<1)return"just now";if(m<60)return`${m}m ago`;const h=Math.floor(m/60);if(h<24)return`${h}h ago`;const dy=Math.floor(h/24);if(dy<30)return`${dy}d ago`;return new Date(iso).toLocaleDateString();}
+
+// ═══ Init ════════════════════════════════════════════════════
+// ═══ Fullscreen ══════════════════════════════════════════════
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+}
+document.addEventListener("fullscreenchange",()=>{
+  const btn=document.getElementById("fullscreen-btn");
+  if(btn) btn.textContent=document.fullscreenElement?"⛶":"⛶";
+});
+window.addEventListener("keydown",(e)=>{
+  if(e.key==="F11"){e.preventDefault();toggleFullscreen();}
+});
+
+async function init(){
+  await loadSavedSessions();
+  // Auto-detect server
+  serverMode=await detectServer();
+  if(serverMode){
+    console.log("Warsha: Server detected — LIVE mode");
+  } else {
+    console.log("Warsha: No server — LOCAL mode (virtual filesystem)");
+  }
+  document.body.className=appMode==="basic"?"basic-mode":"";
+  render();
+  setInterval(updateClock,1000); updateClock();
+  // Auto-save open sessions periodically
+  setInterval(()=>{openSessions.forEach(s=>{if(s.savedId){const si=savedSessions.findIndex(sv=>sv.id===s.savedId);if(si!==-1){savedSessions[si].data=serializeOpenSession(s);savedSessions[si].savedAt=new Date().toISOString();}}});persistSessions();},30000);
+  // Periodically retry server detection if not connected
+  if(!serverMode){
+    setInterval(async()=>{
+      if(!serverMode){
+        const live=await detectServer();
+        if(live){serverMode=true;console.log("Warsha: Server detected — switching to LIVE mode");render();}
+      }
+    },10000);
+  }
+}
+init();
+</script>
+</body>
+</html>

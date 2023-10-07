@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warsha ورشة v1.3 — README</title>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0a;--bg2:#0f0f0f;--bg3:#141414;--border:#1e1e1e;--text:#c8c8c8;--dim:#666;--accent:#4caf50;--accent2:rgba(76,175,80,0.15)}
+html{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.7}
+body{max-width:860px;margin:0 auto;padding:40px 24px 80px}
+h1{font-family:'El Messiri',serif;font-size:2.4em;color:var(--accent);margin-bottom:4px}
+h2{font-family:'El Messiri',serif;font-size:1.5em;color:var(--accent);margin-top:48px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+h3{font-size:1.15em;color:var(--text);margin-top:32px;margin-bottom:10px}
+p{margin-bottom:14px} strong{color:#e0e0e0}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid var(--border);margin:36px 0}
+code{font-family:'JetBrains Mono',monospace;font-size:0.88em;background:var(--bg3);color:var(--accent);padding:2px 6px;border-radius:3px}
+pre{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:16px 20px;overflow-x:auto;margin:16px 0}
+pre code{background:none;padding:0;color:var(--text);font-size:0.85em}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:0.92em}
+th{background:var(--bg3);color:var(--accent);text-align:left;padding:10px 14px;border:1px solid var(--border)}
+td{padding:8px 14px;border:1px solid var(--border)}
+tr:hover td{background:var(--accent2)}
+ul,ol{margin:12px 0;padding-left:24px} li{margin-bottom:6px}
+</style></head><body>
+<h1>Warsha ورشة v1.3</h1>
+<p><strong>بسم الله الرحمن الرحيم</strong></p>
+<p>A web-based terminal multiplexer inspired by tmux — built as a single HTML file. Split panes, manage sessions, customize colors, and connect to a real shell.</p>
+<hr />
+<h2>Quick Start</h2>
+<h3>LOCAL mode (no setup)</h3>
+<p>Open <code>index.html</code> in any browser. Done.</p>
+<h3>LIVE mode (real terminal)</h3>
+<pre><code class="language-bash">pip install websockets
+python warsha_server.py
+# Open http://localhost:8765
+</code></pre>
+<hr />
+<h2>What is Warsha?</h2>
+<p>Warsha (ورشة) means "workshop" in Arabic. It's your digital workspace.</p>
+<p><strong>Dual mode</strong> — works both ways:</p>
+<ul>
+<li><strong>LOCAL</strong> — open <code>index.html</code> directly. Built-in virtual filesystem, zero dependencies, works offline. Status bar shows LOCAL (orange).</li>
+<li><strong>LIVE</strong> — run the Python server. Every pane becomes a real bash session with xterm.js. Tab completion, vim, colors — everything works. Status bar shows LIVE (green).</li>
+</ul>
+<hr />
+<h2>Features</h2>
+<h3>Real Terminal (LIVE mode)</h3>
+<ul>
+<li>xterm.js — same terminal emulator VS Code uses</li>
+<li>Full bash: ls --color, git, python, vim, htop, ssh</li>
+<li>Tab completion, Ctrl+C/D/Z, arrow key history</li>
+<li>Each pane is an independent shell session</li>
+</ul>
+<h3>Virtual Filesystem (LOCAL mode)</h3>
+<ul>
+<li><code>pwd</code>, <code>ls [-la]</code>, <code>cd</code>, <code>cat</code>, <code>mkdir [-p]</code>, <code>touch</code></li>
+<li><code>rm [-rf]</code>, <code>mv</code>, <code>cp [-r]</code>, <code>tree</code>, <code>head</code>, <code>wc</code></li>
+<li><code>echo text &gt; file</code>, <code>echo text &gt;&gt; file</code></li>
+<li>Per-pane working directory with prompt display</li>
+<li>Persists across sessions via browser storage</li>
+</ul>
+<h3>Pane Management</h3>
+<ul>
+<li>Split horizontal/vertical (recursive tree)</li>
+<li>Drag dividers to resize</li>
+<li>Zoom any pane to fullscreen and back</li>
+<li>Navigate with keyboard or click</li>
+</ul>
+<h3>14 Islamic &amp; Cultural Themes</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Theme</th>
+<th>Inspiration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Default</td>
+<td>Classic dark terminal</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Layl ليل</td>
+<td>Night — green phosphor</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Oud عود</td>
+<td>Dark wood, amber gold</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Fajr فجر</td>
+<td>Dawn — peach and rose</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Rawda روضة</td>
+<td>Garden of Medina — sage green</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Salam سلام</td>
+<td>Peace — sky blue</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Filastin فلسطين</td>
+<td>Palestine — olive, red</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Al Madina المدينة</td>
+<td>Medina — sandstone and gold</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Al Hamra الحمراء</td>
+<td>Alhambra — terracotta</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Al Quds القدس</td>
+<td>Jerusalem — golden stone</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Dhahab ذهب</td>
+<td>Gold — navy and royal gold</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Turathi تراثي</td>
+<td>Heritage — teal and burgundy</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>Noor نور</strong></td>
+<td>☀️ Light — warm parchment, deep green</td>
+</tr>
+<tr>
+<td>13</td>
+<td><strong>Yasmin ياسمين</strong></td>
+<td>☀️ Light — jasmine cream, plum accent</td>
+</tr>
+</tbody>
+</table>
+<h3>Sessions &amp; Tabs</h3>
+<ul>
+<li>Save/load sessions with layout, colors, working directories</li>
+<li>Multiple tabs per session</li>
+<li>Multi-session switching</li>
+<li>Export/import as JSON</li>
+<li>Auto-persist across browser close</li>
+</ul>
+<h3>tmux-Compatible Shortcuts</h3>
+<table>
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ctrl+B "</code></td>
+<td>Split horizontal</td>
+</tr>
+<tr>
+<td><code>Ctrl+B %</code></td>
+<td>Split vertical</td>
+</tr>
+<tr>
+<td><code>Ctrl+B x</code></td>
+<td>Close pane</td>
+</tr>
+<tr>
+<td><code>Ctrl+B z</code></td>
+<td>Zoom pane</td>
+</tr>
+<tr>
+<td><code>Ctrl+B o</code></td>
+<td>Next pane</td>
+</tr>
+<tr>
+<td><code>Ctrl+B ↑↓←→</code></td>
+<td>Navigate panes</td>
+</tr>
+<tr>
+<td><code>Ctrl+B c</code></td>
+<td>New window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B n/p</code></td>
+<td>Next/prev window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B 0-9</code></td>
+<td>Select window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B l</code></td>
+<td>Last window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B ,</code></td>
+<td>Rename window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B &amp;</code></td>
+<td>Close window</td>
+</tr>
+<tr>
+<td><code>Ctrl+B d</code></td>
+<td>Detach (home)</td>
+</tr>
+<tr>
+<td><code>Ctrl+B s</code></td>
+<td>Session list</td>
+</tr>
+<tr>
+<td><code>Ctrl+B S</code></td>
+<td>Save session</td>
+</tr>
+<tr>
+<td><code>Ctrl+B w</code></td>
+<td>Window list</td>
+</tr>
+<tr>
+<td><code>Ctrl+B [</code></td>
+<td>Search in pane</td>
+</tr>
+<tr>
+<td><code>Ctrl+B q</code></td>
+<td>Pane numbers</td>
+</tr>
+<tr>
+<td><code>Ctrl+B t</code></td>
+<td>Show time</td>
+</tr>
+<tr>
+<td><code>Ctrl+K</code></td>
+<td>Command palette</td>
+</tr>
+<tr>
+<td><code>F11</code></td>
+<td>Fullscreen</td>
+</tr>
+</tbody>
+</table>
+<h3>User-Friendly Commands</h3>
+<pre><code>split / hsplit / vsplit    — split panes
+theme / theme madina       — list or set theme (partial match)
+color hamra                — set color (partial match)
+zoom                       — toggle zoom
+fullscreen / fs            — toggle fullscreen
+detach / home              — go to welcome screen
+server / server on/off     — check or toggle server connection
+</code></pre>
+<hr />
+<h2>Architecture</h2>
+<pre><code>Browser (http://localhost:8765)
+  │
+  ├─ LOCAL mode: virtual FS in JavaScript
+  │
+  └─ LIVE mode: xterm.js ──WebSocket──→ warsha_server.py (:8766)
+                                              │
+                                         PTY (bash)
+</code></pre>
+<ul>
+<li><strong>HTTP :8765</strong> — serves index.html (Python http.server)</li>
+<li><strong>WS :8766</strong> — terminal connections (websockets library)</li>
+<li><strong>Frontend</strong> — auto-detects: HTTP port + 1 = WS port</li>
+</ul>
+<hr />
+<h2>Files</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>index.html</code></td>
+<td>Warsha — the complete app</td>
+</tr>
+<tr>
+<td><code>warsha_server.py</code></td>
+<td>Python terminal server</td>
+</tr>
+<tr>
+<td><code>launch.sh</code></td>
+<td>Launcher with interactive menu</td>
+</tr>
+<tr>
+<td><code>Warsha_v1.3_tests.js</code></td>
+<td>221 automated tests</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>This file</td>
+</tr>
+<tr>
+<td><code>TODO.md</code></td>
+<td>Roadmap and plan</td>
+</tr>
+<tr>
+<td><code>COMMIT.msg</code></td>
+<td>For <code>git commit -F</code></td>
+</tr>
+<tr>
+<td><code>PROMPT.md</code></td>
+<td>Prompt to continue development</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Testing</h2>
+<pre><code class="language-bash">npm install jsdom
+node Warsha_v1.3_tests.js
+</code></pre>
+<p>221 tests across 35 sections.</p>
+<hr />
+<h2>The Philosophy</h2>
+<p><strong>Build once, save, reuse forever.</strong></p>
+<p>Every time you open Warsha, بسم الله الرحمن الرحيم is at the top. A moment of intention before you work. The themes carry meaning — Filastin, Al Quds, Al Madina — every workspace is a reminder of what matters.</p>
+<hr />
+<p><strong>Warsha ورشة</strong> — your digital workshop.</p>
+</body></html>
